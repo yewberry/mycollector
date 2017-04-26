@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import sys
+import traceback
+import multiprocessing
 
 def main():
     try:
@@ -8,6 +11,9 @@ def main():
         app.MainLoop()
     except Exception as e:
         print e
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()

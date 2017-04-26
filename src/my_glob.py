@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging.handlers
 import sys
+import time
 
 formatter = logging.Formatter("%(asctime)s %(threadName)s(%(process)d/%(thread)d) %(levelname)-6s %(funcName)s/%(filename)s:%(lineno)d %(message)s")
 file_handler = logging.handlers.RotatingFileHandler("my.log", maxBytes=1024*1024, backupCount=5)
@@ -21,3 +22,16 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+def time_start():
+    return time.time()
+
+def time_end(ts):
+    end = time.time()
+    secs = end - ts
+    msecs = secs * 1000
+    return 'elapsed time: %f ms' % msecs
+
+
+
+

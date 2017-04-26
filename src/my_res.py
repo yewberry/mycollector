@@ -97,6 +97,9 @@ m_title = PyEmbeddedImage(
 )
 
 # INSERT_END
+
+S_MF_TITLE = u"收集者"
+
 def image2base64(path):
     icon = open(path, 'rb')
     iconData = icon.read()

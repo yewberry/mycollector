@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import wx
 import my_res as res
+import my_glob as G
 from my_glob import LOG
 from my_session import MySession
+from my_workmgr import MyWorkMgr
 
 ###########################################################################
 # MENU IDs
@@ -17,6 +19,7 @@ class MyMainFrame(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title)
         self._statusbar = None
         self._session = None
+        self._workmgr = MyWorkMgr(5)
 
         # Set system menu icon
         self.SetIcon(res.m_title.GetIcon())
@@ -97,8 +100,9 @@ class MyMainFrame(wx.Frame):
         self.Destroy()
 
     def OnOpenFile(self, evt):
-        pass
-
+        t = G.time_start()
+        self._workmgr.scanFiles(u"E:\\360")
+        print G.time_end(t)
 
 
 

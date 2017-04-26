@@ -2,15 +2,14 @@
 # -*- coding: utf-8 -*-
 import os
 import wx
+import my_res as res
 from ui_mainframe import MyMainFrame
 from my_glob import LOG
 from my_conf import MyConf
 from my_session import MySession
 
 class MyApp(wx.App):
-    """
-    This is app class for MyCoder
-    """
+
     def OnInit(self):
         LOG.debug("OnInit")
         # init conf
@@ -18,7 +17,7 @@ class MyApp(wx.App):
         # init session
         MySession(os.path.join(os.getcwd(), "my.session"))
         # setup MainFrame
-        frame = MyMainFrame(None, "MyCoder")
+        frame = MyMainFrame(None, res.S_MF_TITLE)
         self.SetTopWindow(frame)
         frame.Show(True)
         return True
