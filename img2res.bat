@@ -1,0 +1,1 @@
+python ./src/ui_res.py ./etc/image/
