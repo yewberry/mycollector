@@ -7,10 +7,9 @@ import multiprocessing
 def main():
     try:
         from src.my_app import MyApp
-        app = MyApp(redirect=True)
+        app = MyApp(redirect=False)
         app.MainLoop()
     except Exception as e:
-        print e
         traceback.print_exc()
         sys.exit(1)
 

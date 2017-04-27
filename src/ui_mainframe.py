@@ -5,6 +5,12 @@ import my_glob as G
 from my_glob import LOG
 from my_session import MySession
 from my_workmgr import MyWorkMgr
+from my_watchdog import MyWatchdog
+from my_msgcenter import MyMsgCenter
+import my_models as MyModels
+
+
+from blinker import signal
 
 ###########################################################################
 # MENU IDs
@@ -13,13 +19,21 @@ ID_OPEN = wx.NewId()
 ID_EXIT = wx.NewId()
 ID_SETTINGS = wx.NewId()
 
+
+ready = signal('ready')
+@ready.connect
+def sub(sender, **kw):
+    print("Caught signal from %r, %r" % (sender, kw['data']))
+
 class MyMainFrame(wx.Frame):
 
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, -1, title)
         self._statusbar = None
         self._session = None
-        self._workmgr = MyWorkMgr(5)
+        self.wathcdog = MyWatchdog("E:\\tempebook")
+        self.msgcenter = MyMsgCenter(1)
+        self.msgcenter.subscribe(self.wathcdog.queue)
 
         # Set system menu icon
         self.SetIcon(res.m_title.GetIcon())
@@ -35,6 +49,13 @@ class MyMainFrame(wx.Frame):
         self.create_panels()
         self.create_statusbar()
         self.bind_events()
+
+        self.wathcdog.start()
+        self.msgcenter.start()
+        t = G.time_start()
+        #MyModels.create_tables()
+        # self._workmgr.scanFiles(u"E:\\360")
+        print G.time_end(t)
 
     def create_menubar(self):
         mb = wx.MenuBar()
@@ -100,9 +121,8 @@ class MyMainFrame(wx.Frame):
         self.Destroy()
 
     def OnOpenFile(self, evt):
-        t = G.time_start()
-        self._workmgr.scanFiles(u"E:\\360")
-        print G.time_end(t)
+        ready = signal('ready')
+        ready.send(self)
 
 
 

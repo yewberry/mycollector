@@ -1,0 +1,4 @@
+wxpython
+pip install peewee
+pip install watchdog
+pip install blinker
