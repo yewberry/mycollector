@@ -3,9 +3,9 @@ import threading
 import time
 from blinker import signal
 
-class MyMsgCenter(threading.Thread):
+class MySignalCenter(threading.Thread):
     def __init__(self, interval):
-        super(MyMsgCenter, self).__init__()
+        super(MySignalCenter, self).__init__()
         self.interval = interval
         self.thread_stop = False
         self.queues = []

@@ -7,6 +7,9 @@ from ui_mainframe import MyMainFrame
 from my_glob import LOG
 from my_conf import MyConf
 from my_session import MySession
+from my_watchdog import MyWatchdog
+from my_signalcenter import MySignalCenter
+import my_models as MyModels
 
 class MyApp(wx.App):
 
@@ -16,6 +19,16 @@ class MyApp(wx.App):
         MyConf(os.path.join(os.getcwd(), "my.settings"))
         # init session
         MySession(os.path.join(os.getcwd(), "my.session"))
+        # init database
+        MyModels.create_all_tables()
+
+        self.wathcdog = MyWatchdog("E:\\TTT")
+        self.signalcenter = MySignalCenter(1)
+        self.signalcenter.subscribe(self.wathcdog.queue)
+
+        self.wathcdog.start()
+        self.signalcenter.start()
+
         # setup MainFrame
         frame = MyMainFrame(None, res.S_MF_TITLE)
         self.SetTopWindow(frame)
@@ -23,6 +36,7 @@ class MyApp(wx.App):
         return True
 
     def OnExit(self):
-        pass
+        self.wathcdog.start()
+
 
 

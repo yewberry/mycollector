@@ -1,9 +1,12 @@
 from peewee import *
+import os
 
-database = SqliteDatabase('data.db', **{})
-def create_tables():
-    database.connect()
-    database.create_tables([File, Ebook])
+DB_NAME = "data.db"
+database = SqliteDatabase(DB_NAME, **{})
+def create_all_tables():
+    if not os.path.exists(DB_NAME):
+        database.connect()
+        database.create_tables([File, Ebook])
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass

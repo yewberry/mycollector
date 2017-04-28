@@ -5,10 +5,6 @@ import my_glob as G
 from my_glob import LOG
 from my_session import MySession
 from my_workmgr import MyWorkMgr
-from my_watchdog import MyWatchdog
-from my_msgcenter import MyMsgCenter
-import my_models as MyModels
-
 
 from blinker import signal
 
@@ -19,11 +15,9 @@ ID_OPEN = wx.NewId()
 ID_EXIT = wx.NewId()
 ID_SETTINGS = wx.NewId()
 
-
-ready = signal('ready')
-@ready.connect
-def sub(sender, **kw):
-    print("Caught signal from %r, %r" % (sender, kw['data']))
+EVT_FILE_CREATED = signal("EVT_FILE_CREATED")
+EVT_FILE_DELETED = signal("EVT_FILE_DELETED")
+EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
 
 class MyMainFrame(wx.Frame):
 
@@ -31,9 +25,6 @@ class MyMainFrame(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title)
         self._statusbar = None
         self._session = None
-        self.wathcdog = MyWatchdog("E:\\tempebook")
-        self.msgcenter = MyMsgCenter(1)
-        self.msgcenter.subscribe(self.wathcdog.queue)
 
         # Set system menu icon
         self.SetIcon(res.m_title.GetIcon())
@@ -50,10 +41,7 @@ class MyMainFrame(wx.Frame):
         self.create_statusbar()
         self.bind_events()
 
-        self.wathcdog.start()
-        self.msgcenter.start()
         t = G.time_start()
-        #MyModels.create_tables()
         # self._workmgr.scanFiles(u"E:\\360")
         print G.time_end(t)
 
@@ -121,8 +109,18 @@ class MyMainFrame(wx.Frame):
         self.Destroy()
 
     def OnOpenFile(self, evt):
-        ready = signal('ready')
-        ready.send(self)
+        pass
 
+    @EVT_FILE_CREATED.connect
+    def onFileCreated(self):
+        pass
+
+    @EVT_FILE_DELETED.connect
+    def onFileDeleted(self):
+        pass
+
+    @EVT_FILE_MODIFIED.connect
+    def onFileModified(self):
+        pass
 
 
