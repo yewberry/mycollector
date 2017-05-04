@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
-from my_file import MyFile
+import my_models as Model
 
 def sync_files_info(pth):
     files = [os.path.join(root, name)
              for root, dirs, files in os.walk(pth)
              for name in files]
     for fp in files:
-        MyFile(fp)
+        Model.File.checkAndCreate(fp)
 
 def scan_files(pth):
     files = [os.path.join(root, name)

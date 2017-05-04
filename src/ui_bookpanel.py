@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import wx
 import wx.dataview as dv
+import my_models as Model
 
 class MyBookPanel(wx.Panel):
     def __init__(self, parent):
@@ -22,9 +23,13 @@ class MyBookPanel(wx.Panel):
         # inspector or whatever.
         self.dvc.AssociateModel(self.model)
 
-        self.dvc.AppendTextColumn("Artist", 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn("Title", 1, width=260, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn("Genre", 2, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"书名", 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"国别", 1, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"作者", 2, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"译者", 3, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"出版时间", 4, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"出版社", 5, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.dvc.AppendTextColumn(u"大小(MB)", 6, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
 
         for c in self.dvc.Columns:
             c.Sortable = True
@@ -62,17 +67,33 @@ class MyBookPanel(wx.Panel):
         pass
 
     def onReload(self, pth):
+        pass
 
 
 class MyBookModel(dv.PyDataViewIndexListModel):
     def __init__(self):
         dv.PyDataViewIndexListModel.__init__(self)
+        self.data = Model.File.getFiles()
+        self.map = {
+            0: "name",
+            1: None,
+            2: None,
+            3: None,
+            4: None,
+            5: None,
+            6: "size",
+        }
+        self.Reset(len(self.data))
 
     def GetColumnType(self, col):
         return "string"
 
     def GetValueByRow(self, row, col):
-        return self.data[row][col]
+        fld = self.map[col]
+        c = getattr(self.data[row], fld) if fld is not None else ""
+        if col == 6:
+            c = round(float(c)/1024/1024, 2)
+        return c
 
     def SetValueByRow(self, value, row, col):
         # self.data[row][col] = value
@@ -87,7 +108,7 @@ class MyBookModel(dv.PyDataViewIndexListModel):
     # Called to check if non-standard attributes should be used in the
     # cell at (row, col)
     def GetAttrByRow(self, row, col, attr):
-        if col == 3:
+        if col == 6:
             attr.SetColour('blue')
             attr.SetBold(True)
             return True
@@ -104,5 +125,8 @@ class MyBookModel(dv.PyDataViewIndexListModel):
             item2, item1 = item1, item2
         row1 = self.GetRow(item1)
         row2 = self.GetRow(item2)
-        return cmp(self.data[row1][col], self.data[row2][col])
+        fld = self.map[col]
+        c1 = getattr(self.data[row1], fld) if fld is not None else ""
+        c2 = getattr(self.data[row2], fld) if fld is not None else ""
+        return cmp(c1, c2)
 

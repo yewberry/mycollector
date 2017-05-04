@@ -1,17 +1,35 @@
 from peewee import *
 import os
+import hashlib
+import uuid
+from datetime import datetime
+
+from my_glob import LOG
 
 DB_NAME = "data.db"
 database = SqliteDatabase(DB_NAME, **{})
+
 def create_all_tables():
-    database.connect()
     if not os.path.exists(DB_NAME):
         database.create_tables([File, Ebook])
+    else:
+        database.connect()
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass
 
 class BaseModel(Model):
+    @staticmethod
+    def getFileMd5(fp):
+        with open(fp, "r") as f:
+            m = hashlib.md5()
+            while True:
+                data = f.read(10240)
+                if not data:
+                    break
+                m.update(data)
+        return m.hexdigest()
+
     class Meta:
         database = database
 
@@ -30,7 +48,42 @@ class File(BaseModel):
     class Meta:
         db_table = 't_file'
 
+    @staticmethod
+    def checkAndCreate(fp):
+        if fp is None:
+            return
+        pth = os.path.abspath(fp)
+        md5str = File.getFileMd5(pth)
+
+        try:
+            f = File.select().where((File.md5 == md5str) | (File.path == pth)).get()
+            if f.md5 != md5str:
+                LOG.debug(u"{}: md5 diff, db:{}, cur:{}".format(f.name, f.md5, md5str))
+            elif f.path != pth:
+                LOG.debug(u"{}: path diff, db:{}, cur:{}".format(f.name, f.path, pth))
+        except File.DoesNotExist:
+            fsize = os.path.getsize(pth)
+            fname = os.path.basename(pth)
+            fpath = os.path.abspath(pth)
+            ltime = datetime.fromtimestamp(os.path.getmtime(pth))
+            ctime = datetime.fromtimestamp(os.path.getctime(pth))
+            fext = fname.split(".")
+            fext = fext[len(fext) - 1].lower()
+            f = File.create(uid=uuid.uuid4(), size=fsize, path=fpath, name=fname,
+                                  md5=md5str, last_modify_time=ltime, file_create_time=ctime,
+                                  last_check_time=datetime.now(), ext=fext, dirty=True)
+        return f
+
+    @staticmethod
+    def getFiles():
+        fs = []
+        for f in File.select():
+            fs.append(f)
+        return fs
+
 class Ebook(BaseModel):
+    notes = TextField(null=True)
+    rate = IntegerField(null=True)
     author = TextField(null=True)
     book_name = TextField(null=True)
     file = ForeignKeyField(File, related_name='ebooks')
