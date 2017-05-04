@@ -9,24 +9,26 @@ class MyWatchdog(multiprocessing.Process):
         multiprocessing.Process.__init__(self)
         self.daemon = True
         self.path = path
-        self.observer = None
         self._queue = multiprocessing.Queue(2)
+        self.evt = multiprocessing.Event()
 
     def run(self):
-        event_handler = MyWatchdogHandler(self, self._queue)
-        self.observer = Observer()
-        self.observer.schedule(event_handler, self.path, recursive=True)
-        self.observer.start()
-        self.observer.join()
+        event_handler = MyWatchdogHandler(self)
+        observer = Observer()
+        observer.schedule(event_handler, self.path, recursive=True)
+        observer.start()
+        self.evt.wait()
+        observer.stop()
+        observer.join()
 
-    def onFileCreated(self, path):
-        self.notify({"signal": "EVT_FILE_CREATED", "data": u"{}".format(path)})
+    def onFileChanged(self, sig, path):
+        self.notify({"signal": sig, "data": u"{}".format(path)})
 
     def notify(self, dat):
         self.queue.put(dat)
 
     def stop(self):
-        self.observer.stop()
+        self.evt.set()
 
     @property
     def queue(self):

@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 import wx
+import wx.aui
+import multiprocessing
 import my_res as res
-import my_glob as G
 from my_glob import LOG
+from my_conf import MyConf
 from my_session import MySession
-from my_workmgr import MyWorkMgr
+from my_watchdog import MyWatchdog
+from my_signalcenter import MySignalCenter
+import my_worker as MyWorker
+from ui_bookpanel import MyBookPanel
 
 from blinker import signal
 
@@ -22,17 +27,25 @@ EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
 class MyMainFrame(wx.Frame):
 
     def __init__(self, parent, title):
-        wx.Frame.__init__(self, parent, -1, title)
+        wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE)
         self._statusbar = None
         self._session = None
+        self.cfg = MyConf()
+
+        self._mgr = wx.aui.AuiManager(self)
+
+        self.wathcdog = MyWatchdog(self.cfg.get("monitorFolders")[0])
+        self.signalcenter = MySignalCenter()
+        self.signalcenter.subscribe(self.wathcdog.queue)
 
         # Set system menu icon
         self.SetIcon(res.m_title.GetIcon())
         self.load_session()
         self.create_client_area()
+        self.start_worker()
 
     ###########################################################################
-    # UI Process
+    # UI creation
     ###########################################################################
     def create_client_area(self):
         self.create_menubar()
@@ -40,10 +53,6 @@ class MyMainFrame(wx.Frame):
         self.create_panels()
         self.create_statusbar()
         self.bind_events()
-
-        t = G.time_start()
-        # self._workmgr.scanFiles(u"E:\\360")
-        print G.time_end(t)
 
     def create_menubar(self):
         mb = wx.MenuBar()
@@ -67,7 +76,19 @@ class MyMainFrame(wx.Frame):
         self.SetMenuBar(mb)
 
     def create_panels(self):
-        pass
+        text1 = wx.TextCtrl(self, -1, 'Pane 1 - sample text',
+                            wx.DefaultPosition, wx.Size(200,150),
+                            wx.NO_BORDER | wx.TE_MULTILINE)
+
+        text2 = wx.TextCtrl(self, -1, 'Pane 2 - sample text',
+                            wx.DefaultPosition, wx.Size(200,150),
+                            wx.NO_BORDER | wx.TE_MULTILINE)
+
+        self.bookpanel = MyBookPanel(self)
+        self._mgr.AddPane(text1, wx.LEFT, 'Pane Number One')
+        self._mgr.AddPane(text2, wx.BOTTOM, 'Pane Number Two')
+        self._mgr.AddPane(self.bookpanel, wx.CENTER)
+        self._mgr.Update()
 
     def create_statusbar(self):
         self._statusbar = self.CreateStatusBar()
@@ -78,7 +99,7 @@ class MyMainFrame(wx.Frame):
         self._statusbar.SetStatusText("Type", 2)
 
     ###########################################################################
-    # Session Process
+    # Session management
     ###########################################################################
     def load_session(self):
         # Set pos size
@@ -97,6 +118,16 @@ class MyMainFrame(wx.Frame):
         MySession().set(MyMainFrame.__name__, {"pos": pos, "size": size})
 
     ###########################################################################
+    # Subprocess init
+    ###########################################################################
+    def start_worker(self):
+        self.signalcenter.start()
+        self.wathcdog.start()
+        p = multiprocessing.Process(target=MyWorker.sync_files_info,
+                                    args=(self.cfg.get("monitorFolders")[0],))
+        p.start()
+
+    ###########################################################################
     # Events Process
     ###########################################################################
     def bind_events(self):
@@ -105,22 +136,23 @@ class MyMainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpenFile, id=ID_OPEN)
 
     def OnCloseWindow(self, evt):
+        self.wathcdog.stop()
         self.save_session()
         self.Destroy()
 
     def OnOpenFile(self, evt):
-        pass
+        self.wathcdog.stop()
 
     @EVT_FILE_CREATED.connect
-    def onFileCreated(self):
-        pass
+    def onFileCreated(self, **kw):
+        print "onFileCreated", kw["data"]
 
     @EVT_FILE_DELETED.connect
-    def onFileDeleted(self):
-        pass
+    def onFileDeleted(self, **kw):
+        print "onFileDeleted", kw["data"]
 
     @EVT_FILE_MODIFIED.connect
-    def onFileModified(self):
-        pass
+    def onFileModified(self, **kw):
+        print "onFileModifiedkw", kw["data"]
 
 

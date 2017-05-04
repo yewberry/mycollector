@@ -8,6 +8,7 @@ def main():
     try:
         from src.my_app import MyApp
         app = MyApp(redirect=False)
+        app.SetExitOnFrameDelete(True)
         app.MainLoop()
     except Exception as e:
         traceback.print_exc()

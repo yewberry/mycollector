@@ -1,12 +1,6 @@
 from peewee import *
-import os
 
-DB_NAME = "data.db"
-database = SqliteDatabase(DB_NAME, **{})
-def create_all_tables():
-    database.connect()
-    if not os.path.exists(DB_NAME):
-        database.create_tables([File, Ebook])
+database = SqliteDatabase('etc/data.db', **{})
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass
@@ -15,25 +9,25 @@ class BaseModel(Model):
     class Meta:
         database = database
 
-class File(BaseModel):
+class TFile(BaseModel):
     dirty = BooleanField(null=True)
     ext = TextField(null=True)
     file_create_time = DateTimeField(null=True)
     last_check_time = DateTimeField(null=True)
     last_modify_time = DateTimeField(null=True)
-    md5 = TextField(null=True, unique=True, index=True)
+    md5 = TextField(null=True, unique=True)
     name = TextField()
-    path = TextField(null=True, index=True)
+    path = TextField(index=True, null=True)
     size = IntegerField(null=True)
     uid = CharField(primary_key=True)
 
     class Meta:
         db_table = 't_file'
 
-class Ebook(BaseModel):
+class TEbook(BaseModel):
     author = TextField(null=True)
     book_name = TextField(null=True)
-    file = ForeignKeyField(File, related_name='ebooks')
+    file = ForeignKeyField(db_column='file_id', rel_model=TFile, to_field='uid')
     pub_time = DateField(null=True)
     publisher = TextField(null=True)
     translator = TextField(null=True)

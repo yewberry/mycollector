@@ -4,7 +4,7 @@ import time
 from blinker import signal
 
 class MySignalCenter(threading.Thread):
-    def __init__(self, interval):
+    def __init__(self, interval=1):
         super(MySignalCenter, self).__init__()
         self.interval = interval
         self.thread_stop = False
