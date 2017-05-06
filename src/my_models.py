@@ -61,6 +61,7 @@ class File(BaseModel):
             return
         pth = os.path.abspath(fp)
         md5str = File.getFileMd5(pth)
+        dirty = False
 
         try:
             f = File.select().where((File.md5 == md5str) | (File.path == pth)).get()
@@ -69,6 +70,7 @@ class File(BaseModel):
             elif f.path != pth:
                 LOG.debug(u"{}: path diff, db:{}, cur:{}".format(f.name, f.path, pth))
         except File.DoesNotExist:
+            dirty = True
             fsize = os.path.getsize(pth)
             fname = os.path.basename(pth)
             fpath = os.path.abspath(pth)
@@ -81,7 +83,7 @@ class File(BaseModel):
                                   last_check_time=datetime.now(), ext=fext, dirty=True)
             if f.ext in Ebook.exts:
                 Ebook.create(uid=uuid.uuid4(), file=f)
-        return f
+        return f, dirty
 
 class Ebook(BaseModel):
     exts = ["pdf", "mobi", "epub"]

@@ -2,12 +2,17 @@
 import os
 import my_models as Model
 
-def sync_files_info(pth):
+def sync_files_info(pth, queue):
+    need_update = False
     files = [os.path.join(root, name)
              for root, dirs, files in os.walk(pth)
              for name in files]
     for fp in files:
-        Model.File.checkAndCreate(fp)
+        _, dirty = Model.File.checkAndCreate(fp)
+        need_update |= dirty
+
+    if need_update:
+        queue.put({"signal": "EVT_FOLDER_UPDATED", "data": u"{}".format(pth)})
 
 def scan_files(pth):
     files = [os.path.join(root, name)
@@ -29,3 +34,6 @@ def scan_files(pth):
                 b.append(e)
     for p in r:
         print p
+
+
+

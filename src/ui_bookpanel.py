@@ -1,7 +1,15 @@
 # -*- coding: utf-8 -*-
 import wx
 import wx.dataview as dv
+from blinker import signal
+
+from my_glob import LOG
 import my_models as Model
+
+EVT_FOLDER_UPDATED = signal("EVT_FOLDER_UPDATED")
+EVT_FILE_CREATED = signal("EVT_FILE_CREATED")
+EVT_FILE_DELETED = signal("EVT_FILE_DELETED")
+EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
 
 class MyBookPanel(wx.Panel):
     def __init__(self, parent):
@@ -68,6 +76,13 @@ class MyBookPanel(wx.Panel):
 
     def onReload(self, pth):
         pass
+
+    @EVT_FOLDER_UPDATED.connect
+    def onFolderUpdated(self, **kw):
+        dat = Model.Ebook.getItems()
+        self.model.data = dat
+        self.model.Reset(len(dat))
+        LOG.debug(kw["data"])
 
 
 class MyBookModel(dv.PyDataViewIndexListModel):

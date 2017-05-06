@@ -20,28 +20,27 @@ ID_OPEN = wx.NewId()
 ID_EXIT = wx.NewId()
 ID_SETTINGS = wx.NewId()
 
-EVT_FILE_CREATED = signal("EVT_FILE_CREATED")
-EVT_FILE_DELETED = signal("EVT_FILE_DELETED")
-EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
-
 class MyMainFrame(wx.Frame):
 
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE)
-        self._statusbar = None
-        self._session = None
         self.cfg = MyConf()
+        self.bookpanel = None
+        self.statusbar = None
+        self._session = None
 
         self._mgr = wx.aui.AuiManager(self)
-
+        self.worker_queue = multiprocessing.Queue(10)
         self.wathcdog = MyWatchdog(self.cfg.get("monitorFolders")[0])
         self.signalcenter = MySignalCenter()
-        self.signalcenter.subscribe(self.wathcdog.queue)
 
         # Set system menu icon
         self.SetIcon(res.m_title.GetIcon())
         self.load_session()
         self.create_client_area()
+
+        self.signalcenter.subscribe(self.wathcdog.queue)
+        self.signalcenter.subscribe(self.worker_queue)
         self.start_worker()
 
     ###########################################################################
@@ -90,13 +89,19 @@ class MyMainFrame(wx.Frame):
         self._mgr.AddPane(self.bookpanel, wx.CENTER)
         self._mgr.Update()
 
+        self.signalcenter.sender_map["EVT_FOLDER_UPDATED"] = self.bookpanel
+        self.signalcenter.sender_map["EVT_FILE_CREATED"] = self.bookpanel
+        self.signalcenter.sender_map["EVT_FILE_DELETED"] = self.bookpanel
+        self.signalcenter.sender_map["EVT_FILE_MODIFIED"] = self.bookpanel
+
+
     def create_statusbar(self):
-        self._statusbar = self.CreateStatusBar()
-        self._statusbar.SetFieldsCount(3)
-        self._statusbar.SetStatusWidths([-6, -1, -1])
-        self._statusbar.SetStatusText("Ready.", 0)
-        self._statusbar.SetStatusText("Line", 1)
-        self._statusbar.SetStatusText("Type", 2)
+        self.statusbar = self.CreateStatusBar()
+        self.statusbar.SetFieldsCount(3)
+        self.statusbar.SetStatusWidths([-6, -1, -1])
+        self.statusbar.SetStatusText("Ready.", 0)
+        self.statusbar.SetStatusText("Line", 1)
+        self.statusbar.SetStatusText("Type", 2)
 
     ###########################################################################
     # Session management
@@ -124,7 +129,7 @@ class MyMainFrame(wx.Frame):
         self.signalcenter.start()
         self.wathcdog.start()
         p = multiprocessing.Process(target=MyWorker.sync_files_info,
-                                    args=(self.cfg.get("monitorFolders")[0],))
+                                    args=(self.cfg.get("monitorFolders")[0],self.worker_queue))
         p.start()
 
     ###########################################################################
@@ -142,17 +147,4 @@ class MyMainFrame(wx.Frame):
 
     def OnOpenFile(self, evt):
         self.wathcdog.stop()
-
-    @EVT_FILE_CREATED.connect
-    def onFileCreated(self, **kw):
-        print "onFileCreated", kw["data"]
-
-    @EVT_FILE_DELETED.connect
-    def onFileDeleted(self, **kw):
-        print "onFileDeleted", kw["data"]
-
-    @EVT_FILE_MODIFIED.connect
-    def onFileModified(self, **kw):
-        print "onFileModifiedkw", kw["data"]
-
 
