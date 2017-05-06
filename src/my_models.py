@@ -30,6 +30,13 @@ class BaseModel(Model):
                 m.update(data)
         return m.hexdigest()
 
+    @classmethod
+    def getItems(cls):
+        fs = []
+        for f in cls.select():
+            fs.append(f)
+        return fs
+
     class Meta:
         database = database
 
@@ -72,16 +79,12 @@ class File(BaseModel):
             f = File.create(uid=uuid.uuid4(), size=fsize, path=fpath, name=fname,
                                   md5=md5str, last_modify_time=ltime, file_create_time=ctime,
                                   last_check_time=datetime.now(), ext=fext, dirty=True)
+            if f.ext in Ebook.exts:
+                Ebook.create(uid=uuid.uuid4(), file=f)
         return f
 
-    @staticmethod
-    def getFiles():
-        fs = []
-        for f in File.select():
-            fs.append(f)
-        return fs
-
 class Ebook(BaseModel):
+    exts = ["pdf", "mobi", "epub"]
     notes = TextField(null=True)
     rate = IntegerField(null=True)
     author = TextField(null=True)

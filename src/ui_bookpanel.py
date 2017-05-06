@@ -73,31 +73,32 @@ class MyBookPanel(wx.Panel):
 class MyBookModel(dv.PyDataViewIndexListModel):
     def __init__(self):
         dv.PyDataViewIndexListModel.__init__(self)
-        self.data = Model.File.getFiles()
-        self.map = {
-            0: "name",
-            1: None,
-            2: None,
-            3: None,
-            4: None,
-            5: None,
-            6: "size",
-        }
+        self.data = Model.Ebook.getItems()
         self.Reset(len(self.data))
 
     def GetColumnType(self, col):
         return "string"
 
     def GetValueByRow(self, row, col):
-        fld = self.map[col]
-        c = getattr(self.data[row], fld) if fld is not None else ""
-        if col == 6:
-            c = round(float(c)/1024/1024, 2)
+        o = self.data[row]
+        f = o.file
+        if col == 0:
+            c = f.name
+        elif col == 2:
+            c = o.author
+        elif col == 6:
+            c = round(float(f.size) / 1024 / 1024, 2)
+        else:
+            c = ""
         return c
 
     def SetValueByRow(self, value, row, col):
-        # self.data[row][col] = value
-        pass
+        o = self.data[row]
+        if col == 0:
+            pass
+        elif col == 2:
+            o.author = value
+        o.save()
 
     def GetColumnCount(self):
         return len(self.data[0])
@@ -126,7 +127,9 @@ class MyBookModel(dv.PyDataViewIndexListModel):
         row1 = self.GetRow(item1)
         row2 = self.GetRow(item2)
         fld = self.map[col]
-        c1 = getattr(self.data[row1], fld) if fld is not None else ""
-        c2 = getattr(self.data[row2], fld) if fld is not None else ""
+        c1, c2 = "", ""
+        if fld is not None:
+            c1 = getattr(self.data[row1], fld)
+            c2 = getattr(self.data[row2], fld)
         return cmp(c1, c2)
 
