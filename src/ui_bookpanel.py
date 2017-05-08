@@ -4,7 +4,8 @@ import wx.dataview as dv
 from blinker import signal
 
 from my_glob import LOG
-import my_models as Model
+from my_models import File
+from my_models import Ebook
 
 EVT_FOLDER_UPDATED = signal("EVT_FOLDER_UPDATED")
 EVT_FILE_CREATED = signal("EVT_FILE_CREATED")
@@ -79,28 +80,27 @@ class MyBookPanel(wx.Panel):
 
     @EVT_FOLDER_UPDATED.connect
     def onFolderUpdated(self, **kw):
-        dat = Model.Ebook.getItems()
+        dat = File.getItems()
         self.model.data = dat
         self.model.Reset(len(dat))
         LOG.debug(kw["data"])
 
-
 class MyBookModel(dv.PyDataViewIndexListModel):
     def __init__(self):
         dv.PyDataViewIndexListModel.__init__(self)
-        self.data = Model.Ebook.getItems()
+        self.data = File.getItems()
         self.Reset(len(self.data))
 
     def GetColumnType(self, col):
         return "string"
 
     def GetValueByRow(self, row, col):
-        o = self.data[row]
-        f = o.file
+        f = self.data[row]
+        e = f.ebook[0]
         if col == 0:
-            c = f.name
+            c = e.book_name
         elif col == 2:
-            c = o.author
+            c = e.author
         elif col == 6:
             c = round(float(f.size) / 1024 / 1024, 2)
         else:
@@ -108,12 +108,16 @@ class MyBookModel(dv.PyDataViewIndexListModel):
         return c
 
     def SetValueByRow(self, value, row, col):
-        o = self.data[row]
+        f = self.data[row]
+        ebk_id = f.ebook[0].uid
+        ebk = Ebook.get(Ebook.uid == ebk_id)
         if col == 0:
-            pass
+            ebk.book_name = value
         elif col == 2:
-            o.author = value
-        o.save()
+            ebk.author = value
+
+        ebk.save()
+        f.save()
 
     def GetColumnCount(self):
         return len(self.data[0])

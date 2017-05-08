@@ -9,6 +9,7 @@ from my_session import MySession
 from my_watchdog import MyWatchdog
 from my_signalcenter import MySignalCenter
 import my_worker as MyWorker
+from ui_booktree import MyBookTree
 from ui_bookpanel import MyBookPanel
 
 from blinker import signal
@@ -25,6 +26,7 @@ class MyMainFrame(wx.Frame):
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE)
         self.cfg = MyConf()
+        self.booktree = None
         self.bookpanel = None
         self.statusbar = None
         self._session = None
@@ -75,20 +77,21 @@ class MyMainFrame(wx.Frame):
         self.SetMenuBar(mb)
 
     def create_panels(self):
-        text1 = wx.TextCtrl(self, -1, 'Pane 1 - sample text',
-                            wx.DefaultPosition, wx.Size(200,150),
-                            wx.NO_BORDER | wx.TE_MULTILINE)
-
         text2 = wx.TextCtrl(self, -1, 'Pane 2 - sample text',
                             wx.DefaultPosition, wx.Size(200,150),
                             wx.NO_BORDER | wx.TE_MULTILINE)
 
+        self.booktree = MyBookTree(self)
         self.bookpanel = MyBookPanel(self)
-        self._mgr.AddPane(text1, wx.LEFT, 'Pane Number One')
+
+        # self._mgr.AddPane(self.booktree, wx.aui.AuiPaneInfo().
+        #                   Name("test8").Caption("Tree Pane").
+        #                   Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
+
+        self._mgr.AddPane(self.booktree, wx.LEFT, 'Pane Number One')
         self._mgr.AddPane(text2, wx.BOTTOM, 'Pane Number Two')
         self._mgr.AddPane(self.bookpanel, wx.CENTER)
         self._mgr.Update()
-
         self.signalcenter.add_sender_map(self.bookpanel,
                                          "EVT_FOLDER_UPDATED",
                                          "EVT_FILE_CREATED",

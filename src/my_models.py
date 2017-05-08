@@ -82,16 +82,16 @@ class File(BaseModel):
                                   md5=md5str, last_modify_time=ltime, file_create_time=ctime,
                                   last_check_time=datetime.now(), ext=fext, dirty=True)
             if f.ext in Ebook.exts:
-                Ebook.create(uid=uuid.uuid4(), file=f)
+                Ebook.create(uid=uuid.uuid4(), file=f, book_name=fname)
         return f, dirty
 
 class Ebook(BaseModel):
-    exts = ["pdf", "mobi", "epub"]
+    exts = ["pdf", "mobi", "epub", "txt", "azw3"]
     notes = TextField(null=True)
     rate = IntegerField(null=True)
     author = TextField(null=True)
     book_name = TextField(null=True)
-    file = ForeignKeyField(File, related_name='ebooks')
+    file = ForeignKeyField(File, related_name='ebook')
     pub_time = DateField(null=True)
     publisher = TextField(null=True)
     translator = TextField(null=True)
@@ -100,3 +100,5 @@ class Ebook(BaseModel):
     class Meta:
         db_table = 't_ebook'
 
+class Category(BaseModel):
+    uid = CharField(primary_key=True)
