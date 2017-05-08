@@ -89,11 +89,11 @@ class MyMainFrame(wx.Frame):
         self._mgr.AddPane(self.bookpanel, wx.CENTER)
         self._mgr.Update()
 
-        self.signalcenter.sender_map["EVT_FOLDER_UPDATED"] = self.bookpanel
-        self.signalcenter.sender_map["EVT_FILE_CREATED"] = self.bookpanel
-        self.signalcenter.sender_map["EVT_FILE_DELETED"] = self.bookpanel
-        self.signalcenter.sender_map["EVT_FILE_MODIFIED"] = self.bookpanel
-
+        self.signalcenter.add_sender_map(self.bookpanel,
+                                         "EVT_FOLDER_UPDATED",
+                                         "EVT_FILE_CREATED",
+                                         "EVT_FILE_DELETED",
+                                         "EVT_FILE_MODIFIED")
 
     def create_statusbar(self):
         self.statusbar = self.CreateStatusBar()

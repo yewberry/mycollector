@@ -35,6 +35,10 @@ class MySignalCenter(threading.Thread):
     def unsubscribe(self, queue):
         self.queues.remove(queue)
 
+    def add_sender_map(self, sender, *msgs):
+        for m in msgs:
+            self.sender_map[m] = sender
+
 
 
 
