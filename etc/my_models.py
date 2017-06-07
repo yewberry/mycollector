@@ -13,6 +13,7 @@ class TFile(BaseModel):
     dirty = BooleanField(null=True)
     ext = TextField(null=True)
     file_create_time = DateTimeField(null=True)
+    invalid = BooleanField(null=True)
     last_check_time = DateTimeField(null=True)
     last_modify_time = DateTimeField(null=True)
     md5 = TextField(null=True, unique=True)

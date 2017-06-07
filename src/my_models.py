@@ -41,7 +41,8 @@ class BaseModel(Model):
         database = database
 
 class File(BaseModel):
-    dirty = BooleanField(null=True)
+    invalid = BooleanField(default=False)
+    dirty = BooleanField(default=False)
     ext = TextField(null=True)
     file_create_time = DateTimeField(null=True)
     last_check_time = DateTimeField(null=True)
@@ -56,34 +57,50 @@ class File(BaseModel):
         db_table = 't_file'
 
     @staticmethod
-    def checkAndCreate(fp):
+    def add(pth, md5str):
+        dirty = True
+        fsize = os.path.getsize(pth)
+        fname = os.path.basename(pth)
+        fpath = os.path.abspath(pth)
+        ltime = datetime.fromtimestamp(os.path.getmtime(pth))
+        ctime = datetime.fromtimestamp(os.path.getctime(pth))
+        fext = fname.split(".")
+        fext = fext[len(fext) - 1].lower()
+        f = File.create(uid=uuid.uuid4(), size=fsize, path=fpath, name=fname,
+                        md5=md5str, last_modify_time=ltime, file_create_time=ctime,
+                        last_check_time=datetime.now(), ext=fext, dirty=dirty)
+        if f.ext in Ebook.exts:
+            Ebook.create(uid=uuid.uuid4(), file=f, book_name=fname)
+        return f
+
+    @staticmethod
+    def check(fp):
         if fp is None:
             return
         pth = os.path.abspath(fp)
         md5str = File.getFileMd5(pth)
-        dirty = False
-
+        dirty = True
         try:
             f = File.select().where((File.md5 == md5str) | (File.path == pth)).get()
+            if f.invalid:
+                f.invalid = False
+                f.save()
+
             if f.md5 != md5str:
                 LOG.debug(u"{}: md5 diff, db:{}, cur:{}".format(f.name, f.md5, md5str))
             elif f.path != pth:
                 LOG.debug(u"{}: path diff, db:{}, cur:{}".format(f.name, f.path, pth))
+                f.path = fp
+                f.save()
+            else:
+                dirty = False
         except File.DoesNotExist:
-            dirty = True
-            fsize = os.path.getsize(pth)
-            fname = os.path.basename(pth)
-            fpath = os.path.abspath(pth)
-            ltime = datetime.fromtimestamp(os.path.getmtime(pth))
-            ctime = datetime.fromtimestamp(os.path.getctime(pth))
-            fext = fname.split(".")
-            fext = fext[len(fext) - 1].lower()
-            f = File.create(uid=uuid.uuid4(), size=fsize, path=fpath, name=fname,
-                                  md5=md5str, last_modify_time=ltime, file_create_time=ctime,
-                                  last_check_time=datetime.now(), ext=fext, dirty=True)
-            if f.ext in Ebook.exts:
-                Ebook.create(uid=uuid.uuid4(), file=f, book_name=fname)
+            f = File.add(pth, md5str)
         return f, dirty
+
+    def remove(self):
+        self.invalid = True
+        self.save()
 
 class Ebook(BaseModel):
     exts = ["pdf", "mobi", "epub", "txt", "azw3"]

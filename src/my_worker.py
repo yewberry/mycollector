@@ -8,7 +8,7 @@ def sync_files_info(pth, queue):
              for root, dirs, files in os.walk(pth)
              for name in files]
     for fp in files:
-        _, dirty = Model.File.checkAndCreate(fp)
+        _, dirty = Model.File.check(fp)
         need_update |= dirty
 
     if need_update:

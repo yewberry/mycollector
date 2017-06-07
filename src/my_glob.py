@@ -3,7 +3,7 @@ import logging.handlers
 import sys
 import time
 
-formatter = logging.Formatter("%(asctime)s %(threadName)s(%(process)d/%(thread)d) %(levelname)-6s %(funcName)s/%(filename)s:%(lineno)d %(message)s")
+formatter = logging.Formatter("%(asctime)s %(threadName)s(%(process)d/%(thread)d) %(levelname)-6s %(filename)s/%(funcName)s:%(lineno)d %(message)s")
 file_handler = logging.handlers.RotatingFileHandler("my.log", maxBytes=1024*1024, backupCount=5)
 file_handler.setFormatter(formatter)
 stream_handler = logging.StreamHandler(sys.stdout)

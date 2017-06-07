@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import wx
 import wx.dataview as dv
 from blinker import signal
@@ -23,15 +24,7 @@ class MyBookPanel(wx.Panel):
                                          | dv.DV_MULTIPLE
                                    )
         self.model = MyBookModel()
-
-        # Models can be shared between multiple DataViewCtrls, so this does not
-        # assign ownership like many things in wx do.  There is some
-        # internal reference counting happening so you don't really
-        # need to hold a reference to it either, but we do for this
-        # example so we can fiddle with the model from the widget
-        # inspector or whatever.
         self.dvc.AssociateModel(self.model)
-
         self.dvc.AppendTextColumn(u"书名", 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
         self.dvc.AppendTextColumn(u"国别", 1, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
         self.dvc.AppendTextColumn(u"作者", 2, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
@@ -39,23 +32,16 @@ class MyBookPanel(wx.Panel):
         self.dvc.AppendTextColumn(u"出版时间", 4, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
         self.dvc.AppendTextColumn(u"出版社", 5, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
         self.dvc.AppendTextColumn(u"大小(MB)", 6, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
-
         for c in self.dvc.Columns:
             c.Sortable = True
             c.Reorderable = True
 
-        # set the Sizer property (same as SetSizer)
         self.Sizer = wx.BoxSizer(wx.VERTICAL)
         self.Sizer.Add(self.dvc, 1, wx.EXPAND)
-
-        # Bind some events so we can see what the DVC sends us
         self.Bind(dv.EVT_DATAVIEW_ITEM_EDITING_DONE, self.OnEditingDone, self.dvc)
         self.Bind(dv.EVT_DATAVIEW_ITEM_VALUE_CHANGED, self.OnValueChanged, self.dvc)
 
     def OnDeleteRows(self, evt):
-        # Remove the selected row(s) from the model. The model will take care
-        # of notifying the view (and any other observers) that the change has
-        # happened.
         items = self.dvc.GetSelections()
         rows = [self.model.GetRow(item) for item in items]
         self.model.DeleteRows(rows)
@@ -84,6 +70,14 @@ class MyBookPanel(wx.Panel):
         self.model.data = dat
         self.model.Reset(len(dat))
         LOG.debug(kw["data"])
+
+    @EVT_FILE_CREATED.connect
+    def onFileCreate(self, **kw):
+        self.model.addRow(kw["data"])
+
+    @EVT_FILE_DELETED.connect
+    def onFileDelete(self, **kw):
+        self.model.deleteRow(kw["data"])
 
 class MyBookModel(dv.PyDataViewIndexListModel):
     def __init__(self):
@@ -115,7 +109,6 @@ class MyBookModel(dv.PyDataViewIndexListModel):
             ebk.book_name = value
         elif col == 2:
             ebk.author = value
-
         ebk.save()
         f.save()
 
@@ -125,21 +118,18 @@ class MyBookModel(dv.PyDataViewIndexListModel):
     def GetCount(self):
         return len(self.data)
 
-    # Called to check if non-standard attributes should be used in the
-    # cell at (row, col)
     def GetAttrByRow(self, row, col, attr):
-        if col == 6:
+        f = self.data[row]
+        if f.invalid:
+            attr.SetColour("gray")
+            attr.SetItalic(True)
+            return True
+        elif col == 6:
             attr.SetColour('blue')
             attr.SetBold(True)
             return True
         return False
 
-    # This is called to assist with sorting the data in the view.  The
-    # first two args are instances of the DataViewItem class, so we
-    # need to convert them to row numbers with the GetRow method.
-    # Then it's just a matter of fetching the right values from our
-    # data set and comparing them.  The return value is -1, 0, or 1,
-    # just like Python's cmp() function.
     def Compare(self, item1, item2, col, ascending):
         if not ascending:  # swap sort order?
             item2, item1 = item1, item2
@@ -151,4 +141,36 @@ class MyBookModel(dv.PyDataViewIndexListModel):
             c1 = getattr(self.data[row1], fld)
             c2 = getattr(self.data[row2], fld)
         return cmp(c1, c2)
+
+    def addRow(self, fp):
+        pth = os.path.abspath(fp)
+        idx = next((i for i, x in enumerate(self.data) if x.path == pth), [-1])
+        f, _ = File.check(fp)
+        if idx == -1:
+            self.data.append(f)
+            self.RowAppended()
+        else:
+            self.data[idx] = f
+            self.RowChanged(idx)
+
+    def deleteRow(self, fp):
+        pth = os.path.abspath(fp)
+        idx = next((i for i, x in enumerate(self.data) if x.path == pth))
+        self.data[idx].remove()
+        self.RowChanged(idx)
+        # del self.data[idx]
+        # self.RowDeleted(idx)
+
+    def DeleteRows(self, rows):
+        # make a copy since we'll be sorting(mutating) the list
+        rows = list(rows)
+        # use reverse order so the indexes don't change as we remove items
+        rows.sort(reverse=True)
+
+        for row in rows:
+            # remove it from our data structure
+            del self.data[row]
+            # notify the view(s) using this model that it has been removed
+            self.RowDeleted(row)
+
 
