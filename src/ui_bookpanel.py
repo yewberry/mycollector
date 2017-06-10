@@ -16,33 +16,45 @@ EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
 class MyBookPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1)
-        self.dvc = dv.DataViewCtrl(self,
-                                   style=wx.BORDER_THEME
+        self._dvc = dv.DataViewCtrl(self,
+                                    style=wx.BORDER_THEME
                                          | dv.DV_ROW_LINES
                                          # | dv.DV_HORIZ_RULES
                                          | dv.DV_VERT_RULES
                                          | dv.DV_MULTIPLE
-                                   )
+                                    )
         self.model = MyBookModel()
-        self.dvc.AssociateModel(self.model)
-        self.dvc.AppendTextColumn(u"书名", 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn(u"国别", 1, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn(u"作者", 2, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn(u"译者", 3, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn(u"出版时间", 4, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn(u"出版社", 5, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self.dvc.AppendTextColumn(u"大小(MB)", 6, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
-        for c in self.dvc.Columns:
+        self._dvc.AssociateModel(self.model)
+        self._dvc.AppendTextColumn(u"书名", 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(u"国别", 1, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(u"作者", 2, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(u"译者", 3, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(u"出版时间", 4, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(u"出版社", 5, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(u"大小(MB)", 6, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        for c in self._dvc.Columns:
             c.Sortable = True
             c.Reorderable = True
 
         self.Sizer = wx.BoxSizer(wx.VERTICAL)
-        self.Sizer.Add(self.dvc, 1, wx.EXPAND)
-        self.Bind(dv.EVT_DATAVIEW_ITEM_EDITING_DONE, self.OnEditingDone, self.dvc)
-        self.Bind(dv.EVT_DATAVIEW_ITEM_VALUE_CHANGED, self.OnValueChanged, self.dvc)
+        self.Sizer.Add(self._dvc, 1, wx.EXPAND)
+        self.Bind(dv.EVT_DATAVIEW_ITEM_EDITING_DONE, self.OnEditingDone, self._dvc)
+        self.Bind(dv.EVT_DATAVIEW_ITEM_VALUE_CHANGED, self.OnValueChanged, self._dvc)
+
+    @property
+    def dvc(self):
+        return self._dvc
+
+    def getCurRowData(self):
+        sel = self._dvc.GetSelections()[0]
+        if sel is None:
+            return None
+        row = self.model.GetRow(sel)
+        dat = self.model.data[row]
+        return dat
 
     def OnDeleteRows(self, evt):
-        items = self.dvc.GetSelections()
+        items = self._dvc.GetSelections()
         rows = [self.model.GetRow(item) for item in items]
         self.model.DeleteRows(rows)
 

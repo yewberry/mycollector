@@ -64,13 +64,12 @@ class File(BaseModel):
         fpath = os.path.abspath(pth)
         ltime = datetime.fromtimestamp(os.path.getmtime(pth))
         ctime = datetime.fromtimestamp(os.path.getctime(pth))
-        fext = fname.split(".")
-        fext = fext[len(fext) - 1].lower()
+        fn, fext = os.path.splitext(fname)
         f = File.create(uid=uuid.uuid4(), size=fsize, path=fpath, name=fname,
                         md5=md5str, last_modify_time=ltime, file_create_time=ctime,
                         last_check_time=datetime.now(), ext=fext, dirty=dirty)
         if f.ext in Ebook.exts:
-            Ebook.create(uid=uuid.uuid4(), file=f, book_name=fname)
+            Ebook.create(uid=uuid.uuid4(), file=f, book_name=fn)
         return f
 
     @staticmethod
@@ -103,7 +102,7 @@ class File(BaseModel):
         self.save()
 
 class Ebook(BaseModel):
-    exts = ["pdf", "mobi", "epub", "txt", "azw3"]
+    exts = [".pdf", ".mobi", ".epub", ".txt", ".azw3"]
     notes = TextField(null=True)
     rate = IntegerField(null=True)
     author = TextField(null=True)

@@ -11,6 +11,7 @@ from my_signalcenter import MySignalCenter
 import my_worker as MyWorker
 from ui_booktree import MyBookTree
 from ui_bookpanel import MyBookPanel
+from ui_bookdetail import MyBookDetail
 
 from blinker import signal
 
@@ -28,6 +29,8 @@ class MyMainFrame(wx.Frame):
         self.cfg = MyConf()
         self.booktree = None
         self.bookpanel = None
+        self.bookdetail = None
+        self.notebook = None
         self.statusbar = None
         self._session = None
 
@@ -77,20 +80,23 @@ class MyMainFrame(wx.Frame):
         self.SetMenuBar(mb)
 
     def create_panels(self):
-        text2 = wx.TextCtrl(self, -1, 'Pane 2 - sample text',
-                            wx.DefaultPosition, wx.Size(200,150),
-                            wx.NO_BORDER | wx.TE_MULTILINE)
-
         self.booktree = MyBookTree(self)
-        self.bookpanel = MyBookPanel(self)
+        self.notebook = wx.aui.AuiNotebook(self, style=wx.aui.AUI_NB_TOP |
+                            wx.aui.AUI_NB_TAB_SPLIT | wx.aui.AUI_NB_TAB_MOVE | wx.aui.AUI_NB_SCROLL_BUTTONS)
+        self.bookpanel = MyBookPanel(self.notebook)
+        self.bookdetail = MyBookDetail(self, self.bookpanel)
+        self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_ALL_TITLE)
+        self.notebook.AddPage(self.bookpanel, res.S_MF_BOOK_TITLE)
+        self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_MUSIC_TITLE)
+        self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_VIDEO_TITLE)
 
         # self._mgr.AddPane(self.booktree, wx.aui.AuiPaneInfo().
         #                   Name("test8").Caption("Tree Pane").
         #                   Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
 
         self._mgr.AddPane(self.booktree, wx.LEFT, 'Pane Number One')
-        self._mgr.AddPane(text2, wx.BOTTOM, 'Pane Number Two')
-        self._mgr.AddPane(self.bookpanel, wx.CENTER)
+        self._mgr.AddPane(self.notebook, wx.CENTER)
+        self._mgr.AddPane(self.bookdetail, wx.RIGHT, res.S_BD_TITLE)
         self._mgr.Update()
         self.signalcenter.add_sender_map(self.bookpanel,
                                          "EVT_FOLDER_UPDATED",
@@ -113,7 +119,7 @@ class MyMainFrame(wx.Frame):
         # Set pos size
         s = MySession().get(MyMainFrame.__name__)
         if s is None:
-            self.SetSize((800, 600))
+            self.SetSize((1000, 600))
             self.Center()
         else:
             self.SetSize(s["size"])
@@ -124,6 +130,7 @@ class MyMainFrame(wx.Frame):
         pos = self.GetPosition()
         size = self.GetSize()
         MySession().set(MyMainFrame.__name__, {"pos": pos, "size": size})
+        LOG.debug({"pos": pos, "size": size})
 
     ###########################################################################
     # Subprocess init
