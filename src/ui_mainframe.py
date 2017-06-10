@@ -10,8 +10,9 @@ from my_watchdog import MyWatchdog
 from my_signalcenter import MySignalCenter
 import my_worker as MyWorker
 from ui_booktree import MyBookTree
+from ui_filepanel import MyFilePanel
 from ui_bookpanel import MyBookPanel
-from ui_bookdetail import MyBookDetail
+from ui_detailpanel import MyDetailPanel
 
 from blinker import signal
 
@@ -27,10 +28,11 @@ class MyMainFrame(wx.Frame):
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE)
         self.cfg = MyConf()
+        self.filepanel = None
         self.booktree = None
         self.bookpanel = None
-        self.bookdetail = None
         self.notebook = None
+        self.detailpanel = None
         self.statusbar = None
         self._session = None
 
@@ -83,12 +85,15 @@ class MyMainFrame(wx.Frame):
         self.booktree = MyBookTree(self)
         self.notebook = wx.aui.AuiNotebook(self, style=wx.aui.AUI_NB_TOP |
                             wx.aui.AUI_NB_TAB_SPLIT | wx.aui.AUI_NB_TAB_MOVE | wx.aui.AUI_NB_SCROLL_BUTTONS)
+        self.filepanel = MyFilePanel(self.notebook)
         self.bookpanel = MyBookPanel(self.notebook)
-        self.bookdetail = MyBookDetail(self, self.bookpanel)
-        self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_ALL_TITLE)
+        self.notebook.AddPage(self.filepanel, res.S_MF_ALL_TITLE)
         self.notebook.AddPage(self.bookpanel, res.S_MF_BOOK_TITLE)
         self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_MUSIC_TITLE)
         self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_VIDEO_TITLE)
+        self.detailpanel = MyDetailPanel(self)
+
+        self.filepanel.initDetailPanel(self.detailpanel.pgm)
 
         # self._mgr.AddPane(self.booktree, wx.aui.AuiPaneInfo().
         #                   Name("test8").Caption("Tree Pane").
@@ -96,7 +101,7 @@ class MyMainFrame(wx.Frame):
 
         self._mgr.AddPane(self.booktree, wx.LEFT, 'Pane Number One')
         self._mgr.AddPane(self.notebook, wx.CENTER)
-        self._mgr.AddPane(self.bookdetail, wx.RIGHT, res.S_BD_TITLE)
+        self._mgr.AddPane(self.detailpanel, wx.RIGHT, res.S_BD_TITLE)
         self._mgr.Update()
         self.signalcenter.add_sender_map(self.bookpanel,
                                          "EVT_FOLDER_UPDATED",
@@ -139,7 +144,7 @@ class MyMainFrame(wx.Frame):
         self.signalcenter.start()
         self.wathcdog.start()
         p = multiprocessing.Process(target=MyWorker.sync_files_info,
-                                    args=(self.cfg.get("monitorFolders")[0],self.worker_queue))
+                                    args=(self.cfg.get("monitorFolders")[0], self.worker_queue))
         p.start()
 
     ###########################################################################
@@ -149,6 +154,7 @@ class MyMainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
         self.Bind(wx.EVT_MENU, self.OnCloseWindow, id=ID_EXIT)
         self.Bind(wx.EVT_MENU, self.OnOpenFile, id=ID_OPEN)
+        self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.onNotebookPageChanged, self.notebook)
 
     def OnCloseWindow(self, evt):
         self.wathcdog.stop()
@@ -157,4 +163,8 @@ class MyMainFrame(wx.Frame):
 
     def OnOpenFile(self, evt):
         self.wathcdog.stop()
+
+    def onNotebookPageChanged(self, evt):
+        panel = self.notebook.GetCurrentPage()
+        panel.initDetailPanel(self.detailpanel.pgm)
 

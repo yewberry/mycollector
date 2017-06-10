@@ -15,20 +15,17 @@ EVT_FILE_CREATED = signal("EVT_FILE_CREATED")
 EVT_FILE_DELETED = signal("EVT_FILE_DELETED")
 EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
 
-class MyBookPanel(wx.Panel):
+class MyFilePanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1)
         self._pgm = None
         self._dvc = dv.DataViewCtrl(self, style=wx.BORDER_THEME | dv.DV_ROW_LINES | dv.DV_VERT_RULES | dv.DV_MULTIPLE)
-        self.model = MyBookModel()
+        self.model = MyFileModel()
         self._dvc.AssociateModel(self.model)
-        self._dvc.AppendTextColumn(u"书名", 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self._dvc.AppendTextColumn(u"国别", 1, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self._dvc.AppendTextColumn(u"作者", 2, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self._dvc.AppendTextColumn(u"译者", 3, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self._dvc.AppendTextColumn(u"出版时间", 4, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self._dvc.AppendTextColumn(u"出版社", 5, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
-        self._dvc.AppendTextColumn(u"大小(MB)", 6, width=80, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(res.S_FP_FILE_NAME, 0, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(res.S_FP_FILE_EXT, 1, width=50, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self._dvc.AppendTextColumn(res.S_FP_MODIFY_TIME, 2, width=100, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
+        self._dvc.AppendTextColumn(res.S_FP_FILE_SIZE, 3, width=80, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
         for c in self._dvc.Columns:
             c.Sortable = True
             c.Reorderable = True
@@ -59,15 +56,13 @@ class MyBookPanel(wx.Panel):
     ###########################################################################
     def initDetailPanel(self, pgm):
         pgm.Clear()
-        page = pgm.AddPage("Page 1 - Testing All")
-        page.Append(wxpg.PropertyCategory(res.S_BD_BOOK_INFO))
-        page.Append(wxpg.LongStringProperty(res.S_BD_NAME, "book_name"))
-        page.Append(wxpg.StringProperty(res.S_BD_AUTHOR, "author"))
-        page.Append(wxpg.LongStringProperty(res.S_BD_DESC, "notes"))
-        page.Append(wxpg.PropertyCategory(res.S_BD_FILE_INFO))
-        page.Append(wxpg.StringProperty(res.S_BD_EXT, "ext"))
+        page = pgm.AddPage(res.S_BD_FILE_INFO)
+        page.Append(wxpg.LongStringProperty(res.S_BD_FILE_NAME, "file_name"))
+        page.Append(wxpg.StringProperty(res.S_BD_EXT, "file_ext"))
+        page.Append(wxpg.StringProperty(res.S_BD_SIZE, "file_size"))
         page.Append(wxpg.StringProperty(res.S_BD_MD5, "md5"))
-        pgm.AddPage("Page 2 - Testing All")
+        page.Append(wxpg.StringProperty(res.S_BD_MODIFY_TIME, "last_modify_time"))
+        page.Append(wxpg.LongStringProperty(res.S_BD_PATH, "path"))
         self._pgm = pgm
 
     ###########################################################################
@@ -77,27 +72,18 @@ class MyBookPanel(wx.Panel):
         f = self.getCurRowData()
         if f is None:
             return
-        eb = f.ebook.get()
         fn = self._pgm.SetPropertyValueString
-        fn("book_name", eb.book_name)
-        fn("author", eb.author if eb.author is not None else "")
-        fn("notes", eb.notes if eb.notes is not None else "")
-        fn("ext", f.ext)
+        fn("file_name", f.name)
+        fn("file_ext", f.ext if f.ext is not None else "")
+        fn("file_size", str(round(float(f.size) / 1024 / 1024, 2)))
         fn("md5", f.md5)
+        fn("last_modify_time", f.last_modify_time.strftime("%Y-%m-%d %H:%M:%S"))
+        fn("path", f.path)
 
     def OnDeleteRows(self, evt):
         items = self._dvc.GetSelections()
         rows = [self.model.GetRow(item) for item in items]
         self.model.DeleteRows(rows)
-
-    def OnAddRow(self, evt):
-        # Add some bogus data to a new row in the model's data
-        id = len(self.model.data) + 1
-        value = [str(id),
-                 'new artist %d' % id,
-                 'new title %d' % id,
-                 'genre %d' % id]
-        self.model.AddRow(value)
 
     def OnEditingDone(self, evt):
         pass
@@ -126,7 +112,7 @@ class MyBookPanel(wx.Panel):
 ###########################################################################
 # DVC model
 ###########################################################################
-class MyBookModel(dv.PyDataViewIndexListModel):
+class MyFileModel(dv.PyDataViewIndexListModel):
     def __init__(self):
         dv.PyDataViewIndexListModel.__init__(self)
         self.data = File.getItems()
@@ -137,27 +123,20 @@ class MyBookModel(dv.PyDataViewIndexListModel):
 
     def GetValueByRow(self, row, col):
         f = self.data[row]
-        e = f.ebook[0]
         if col == 0:
-            c = e.book_name
+            c = f.name
+        elif col == 1:
+            c = f.ext
         elif col == 2:
-            c = e.author
-        elif col == 6:
+            c = f.last_modify_time.strftime("%Y-%m-%d %H:%M:%S")
+        elif col == 3:
             c = round(float(f.size) / 1024 / 1024, 2)
         else:
             c = ""
         return c
 
     def SetValueByRow(self, value, row, col):
-        f = self.data[row]
-        ebk_id = f.ebook[0].uid
-        ebk = Ebook.get(Ebook.uid == ebk_id)
-        if col == 0:
-            ebk.book_name = value
-        elif col == 2:
-            ebk.author = value
-        ebk.save()
-        f.save()
+        pass
 
     def GetColumnCount(self):
         return len(self.data[0])

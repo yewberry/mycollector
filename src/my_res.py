@@ -99,21 +99,30 @@ m_title = PyEmbeddedImage(
 # INSERT_END
 
 S_MF_TITLE = u"收集者"
-S_MF_ALL_TITLE = u"所有"
+S_MF_ALL_TITLE = u"所有文件"
 S_MF_BOOK_TITLE = u"电子书"
 S_MF_PIC_TITLE = u"照片"
 S_MF_MUSIC_TITLE = u"音乐"
 S_MF_VIDEO_TITLE = u"视频"
 
+S_FP_FILE_NAME = u"文件名"
+S_FP_FILE_EXT = u"后缀"
+S_FP_MODIFY_TIME = u"修改时间"
+S_FP_FILE_SIZE = u"大小(MB)"
+
 S_BD_TITLE = u"详情"
 S_BD_BOOK_INFO = u"书籍信息"
 S_BD_FILE_INFO = u"文件信息"
+S_BD_FILE_NAME = u"文件名"
 S_BD_NAME = u"书名"
 S_BD_AUTHOR = u"作者"
 S_BD_PATH = u"文件路径"
 S_BD_DESC = u"描述"
 S_BD_MD5 = u"MD5值"
 S_BD_EXT = u"文件类型"
+S_BD_SIZE = u"大小(MB)"
+S_BD_MODIFY_TIME = u"修改时间"
+
 
 def image2base64(path):
     icon = open(path, 'rb')
