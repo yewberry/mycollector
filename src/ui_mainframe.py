@@ -35,32 +35,33 @@ class MyMainFrame(wx.Frame):
         self.detailpanel = None
         self.statusbar = None
         self._session = None
+        self.monitorFolders = self.cfg.get("monitorFolders")
 
         self._mgr = wx.aui.AuiManager(self)
         self.worker_queue = multiprocessing.Queue(10)
-        self.wathcdog = MyWatchdog(self.cfg.get("monitorFolders")[0])
+        self.wathcdog = MyWatchdog(self.monitorFolders[0])
         self.signalcenter = MySignalCenter()
 
         # Set system menu icon
         self.SetIcon(res.m_title.GetIcon())
-        self.load_session()
-        self.create_client_area()
+        self.loadSession()
+        self.createClientArea()
 
         self.signalcenter.subscribe(self.wathcdog.queue)
         self.signalcenter.subscribe(self.worker_queue)
-        self.start_worker()
+        self.startWorker()
 
     ###########################################################################
     # UI creation
     ###########################################################################
-    def create_client_area(self):
-        self.create_menubar()
+    def createClientArea(self):
+        self.createMenubar()
         # self.createToolbar()
-        self.create_panels()
-        self.create_statusbar()
-        self.bind_events()
+        self.createPanels()
+        self.createStatusbar()
+        self.bindEvents()
 
-    def create_menubar(self):
+    def createMenubar(self):
         mb = wx.MenuBar()
         file_menu = wx.Menu()
         item = wx.MenuItem(file_menu, ID_OPEN, u"打开", u"打开文件")
@@ -77,11 +78,11 @@ class MyMainFrame(wx.Frame):
         item.SetBitmap(res.m_settings.GetBitmap())
         options_menu.AppendItem(item)
 
-        mb.Append(file_menu, u"文件")
-        mb.Append(options_menu, u"选项")
+        mb.Append(file_menu, res.S_MENU_FILE)
+        mb.Append(options_menu, res.S_MENU_OPTION)
         self.SetMenuBar(mb)
 
-    def create_panels(self):
+    def createPanels(self):
         self.booktree = MyBookTree(self)
         self.notebook = wx.aui.AuiNotebook(self, style=wx.aui.AUI_NB_TOP |
                             wx.aui.AUI_NB_TAB_SPLIT | wx.aui.AUI_NB_TAB_MOVE | wx.aui.AUI_NB_SCROLL_BUTTONS)
@@ -103,13 +104,13 @@ class MyMainFrame(wx.Frame):
         self._mgr.AddPane(self.notebook, wx.CENTER)
         self._mgr.AddPane(self.detailpanel, wx.RIGHT, res.S_BD_TITLE)
         self._mgr.Update()
-        self.signalcenter.add_sender_map(self.bookpanel,
+        self.signalcenter.addSenderMap(self.bookpanel,
                                          "EVT_FOLDER_UPDATED",
                                          "EVT_FILE_CREATED",
                                          "EVT_FILE_DELETED",
                                          "EVT_FILE_MODIFIED")
 
-    def create_statusbar(self):
+    def createStatusbar(self):
         self.statusbar = self.CreateStatusBar()
         self.statusbar.SetFieldsCount(3)
         self.statusbar.SetStatusWidths([-6, -1, -1])
@@ -120,7 +121,7 @@ class MyMainFrame(wx.Frame):
     ###########################################################################
     # Session management
     ###########################################################################
-    def load_session(self):
+    def loadSession(self):
         # Set pos size
         s = MySession().get(MyMainFrame.__name__)
         if s is None:
@@ -131,7 +132,7 @@ class MyMainFrame(wx.Frame):
             self.SetPosition(s["pos"])
         self._session = s
 
-    def save_session(self):
+    def saveSession(self):
         pos = self.GetPosition()
         size = self.GetSize()
         MySession().set(MyMainFrame.__name__, {"pos": pos, "size": size})
@@ -140,28 +141,28 @@ class MyMainFrame(wx.Frame):
     ###########################################################################
     # Subprocess init
     ###########################################################################
-    def start_worker(self):
+    def startWorker(self):
         self.signalcenter.start()
         self.wathcdog.start()
         p = multiprocessing.Process(target=MyWorker.sync_files_info,
-                                    args=(self.cfg.get("monitorFolders")[0], self.worker_queue))
+                                    args=(self.monitorFolders[0], self.worker_queue))
         p.start()
 
     ###########################################################################
     # Events Process
     ###########################################################################
-    def bind_events(self):
-        self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
-        self.Bind(wx.EVT_MENU, self.OnCloseWindow, id=ID_EXIT)
-        self.Bind(wx.EVT_MENU, self.OnOpenFile, id=ID_OPEN)
+    def bindEvents(self):
+        self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
+        self.Bind(wx.EVT_MENU, self.onCloseWindow, id=ID_EXIT)
+        self.Bind(wx.EVT_MENU, self.onOpenFile, id=ID_OPEN)
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.onNotebookPageChanged, self.notebook)
 
-    def OnCloseWindow(self, evt):
+    def onCloseWindow(self, evt):
         self.wathcdog.stop()
-        self.save_session()
+        self.saveSession()
         self.Destroy()
 
-    def OnOpenFile(self, evt):
+    def onOpenFile(self, evt):
         self.wathcdog.stop()
 
     def onNotebookPageChanged(self, evt):

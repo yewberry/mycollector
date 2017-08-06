@@ -105,6 +105,9 @@ S_MF_PIC_TITLE = u"照片"
 S_MF_MUSIC_TITLE = u"音乐"
 S_MF_VIDEO_TITLE = u"视频"
 
+S_MENU_FILE = u"文件"
+S_MENU_OPTION = u"选项"
+
 S_FP_FILE_NAME = u"文件名"
 S_FP_FILE_EXT = u"后缀"
 S_FP_MODIFY_TIME = u"修改时间"
