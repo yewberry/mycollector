@@ -6,14 +6,15 @@ import wx.propgrid as wxpg
 from blinker import signal
 
 import my_res as res
+import my_event as evt
 from my_glob import LOG
 from my_models import File
 from my_models import Ebook
 
-EVT_FOLDER_UPDATED = signal("EVT_FOLDER_UPDATED")
-EVT_FILE_CREATED = signal("EVT_FILE_CREATED")
-EVT_FILE_DELETED = signal("EVT_FILE_DELETED")
-EVT_FILE_MODIFIED = signal("EVT_FILE_MODIFIED")
+EVT_FOLDER_UPDATED = signal(evt.FOLDER_UPDATED)
+EVT_FILE_CREATED = signal(evt.FILE_CREATED)
+EVT_FILE_DELETED = signal(evt.FILE_DELETED)
+EVT_FILE_MODIFIED = signal(evt.FILE_MODIFIED)
 
 class MyBookPanel(wx.Panel):
     def __init__(self, parent):

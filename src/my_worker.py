@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import my_models as Model
+import my_event as evt
 
 def sync_files_info(pth, queue):
     need_update = False
@@ -12,7 +13,7 @@ def sync_files_info(pth, queue):
         need_update |= dirty
 
     if need_update:
-        queue.put({"signal": "EVT_FOLDER_UPDATED", "data": u"{}".format(pth)})
+        queue.put({"signal": evt.FOLDER_UPDATED, "data": u"{}".format(pth)})
 
 def scan_files(pth):
     files = [os.path.join(root, name)

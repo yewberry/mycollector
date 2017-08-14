@@ -2,7 +2,9 @@
 import wx
 import wx.aui
 import multiprocessing
+
 import my_res as res
+import my_event as evt
 from my_glob import LOG
 from my_conf import MyConf
 from my_session import MySession
@@ -13,6 +15,7 @@ from ui_booktree import MyBookTree
 from ui_filepanel import MyFilePanel
 from ui_bookpanel import MyBookPanel
 from ui_detailpanel import MyDetailPanel
+from ui_netdiskpanel import MyNetDiskPanel
 
 from blinker import signal
 
@@ -34,6 +37,7 @@ class MyMainFrame(wx.Frame):
         self.notebook = None
         self.detailpanel = None
         self.statusbar = None
+        self.netdiskpanel = None
         self._session = None
         self.monitorFolders = self.cfg.get("monitorFolders")
 
@@ -88,13 +92,17 @@ class MyMainFrame(wx.Frame):
                             wx.aui.AUI_NB_TAB_SPLIT | wx.aui.AUI_NB_TAB_MOVE | wx.aui.AUI_NB_SCROLL_BUTTONS)
         self.filepanel = MyFilePanel(self.notebook)
         self.bookpanel = MyBookPanel(self.notebook)
+        self.netdiskpanel = MyNetDiskPanel(self.notebook)
+        self.notebook.AddPage(self.netdiskpanel, res.S_MF_NETDISK_TITLE)
         self.notebook.AddPage(self.filepanel, res.S_MF_ALL_TITLE)
         self.notebook.AddPage(self.bookpanel, res.S_MF_BOOK_TITLE)
         self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_MUSIC_TITLE)
         self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_VIDEO_TITLE)
         self.detailpanel = MyDetailPanel(self)
 
-        self.filepanel.initDetailPanel(self.detailpanel.pgm)
+        def_page = self.netdiskpanel
+        self.notebook.SetSelection(self.notebook.GetPageIndex(def_page))
+        def_page.initDetailPanel(self.detailpanel.pgm)
 
         # self._mgr.AddPane(self.booktree, wx.aui.AuiPaneInfo().
         #                   Name("test8").Caption("Tree Pane").
@@ -105,10 +113,7 @@ class MyMainFrame(wx.Frame):
         self._mgr.AddPane(self.detailpanel, wx.RIGHT, res.S_BD_TITLE)
         self._mgr.Update()
         self.signalcenter.addSenderMap(self.bookpanel,
-                                         "EVT_FOLDER_UPDATED",
-                                         "EVT_FILE_CREATED",
-                                         "EVT_FILE_DELETED",
-                                         "EVT_FILE_MODIFIED")
+                                       evt.FOLDER_UPDATED, evt.FILE_CREATED, evt.FILE_DELETED, evt.FILE_MODIFIED)
 
     def createStatusbar(self):
         self.statusbar = self.CreateStatusBar()
@@ -163,7 +168,31 @@ class MyMainFrame(wx.Frame):
         self.Destroy()
 
     def onOpenFile(self, evt):
-        self.wathcdog.stop()
+        import PyV8
+        # login_tangram_xxxxxxx.js
+        ctxt = PyV8.JSContext()
+        ctxt.enter()
+        gid = ctxt.eval("""
+            (function(){
+                return "xxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,
+                    function(e) {
+                        var t = 16 * Math.random() | 0,
+                        n = "x" == e ? t: 3 & t | 8;
+                        return n.toString(16)
+                    }).toUpperCase()
+            })
+        """)
+        tt = ctxt.eval("""
+            (function(){
+                return ""+(new Date).getTime();
+            })
+        """)
+        callback = ctxt.eval("""
+            (function(){
+                return "parent.bd__cbs__" + Math.floor(Math.random() * 2147483648).toString(36);
+            })
+        """)
+        print callback(), tt(), gid()
 
     def onNotebookPageChanged(self, evt):
         panel = self.notebook.GetCurrentPage()
