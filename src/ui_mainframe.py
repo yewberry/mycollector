@@ -169,6 +169,10 @@ class MyMainFrame(wx.Frame):
 
     def onOpenFile(self, evt):
         import PyV8
+        import requests
+        import re
+        import json
+
         # login_tangram_xxxxxxx.js
         ctxt = PyV8.JSContext()
         ctxt.enter()
@@ -189,10 +193,87 @@ class MyMainFrame(wx.Frame):
         """)
         callback = ctxt.eval("""
             (function(){
-                return "parent.bd__cbs__" + Math.floor(Math.random() * 2147483648).toString(36);
+                return "bd__cbs__" + Math.floor(Math.random() * 2147483648).toString(36);
             })
         """)
-        print callback(), tt(), gid()
+
+        gid = gid()
+        usr = "13813000397"
+        cookies = {}
+
+        r = requests.get("http://pan.baidu.com")
+        baidu_id = r.cookies["BAIDUID"]
+        print "BAIDUID:", baidu_id
+        cookies["BAIDUID"] = baidu_id
+
+        r = requests.get("https://passport.baidu.com/v2/api/?getapi", params={
+            "tpl": "netdisk",
+            "subpro": "netdisk_web",
+            "apiver": "v3",
+            "tt": tt(),
+            "class": "login",
+            "logintype": "basicLogin",
+            "gid": gid,
+            "callback": callback()
+        }, cookies=cookies)
+        json_str = re.findall(r"\((.+?)\)", r.text)[0]
+        json_str = json_str.replace("\'", "\"")
+        o = json.loads(json_str)
+        token = o["data"]["token"]
+        print "token:", token, o
+        cookies["HOSUPPORT"] = "1"
+
+        r = requests.get("https://passport.baidu.com/v2/api/?logincheck", params={
+            "token": token,
+            "tpl": "netdisk",
+            "subpro": "netdisk_web",
+            "apiver": "v3",
+            "tt": tt(),
+            "sub_source": "leadsetpwd",
+            "username": usr,
+            "isphone": "false",
+            "dv": "",
+            "callback": callback()
+        }, cookies=cookies)
+        ubi = r.cookies["UBI"]
+        print "UBI:", ubi
+        cookies["UBI"] = ubi
+
+        payload = {
+            "staticpage": "http://pan.baidu.com/res/static/thirdparty/pass_v3_jump.html",
+            "charset": "utf-8",
+            "tpl": "netdisk",
+            "subpro": "netdisk_web",
+            "apiver": "v3",
+            "codestring": "",
+            "safeflg": "0",
+            "u": "http://pan.baidu.com/disk/home",
+            "isPhone": "false",
+            "detect": "1",
+            "quick_user": "0",
+            "logintype": "basicLogin",
+            "logLoginType": "pc_loginBasic",
+            "idc": "",
+            "loginmerge": "true",
+            "foreignusername": "",
+            "mem_pass": "on",
+            "ppui_logintime": "7238",
+            "countrycode": "",
+            "fp_uid": "",
+            "fp_info": "",
+            "dv": "",
+
+            "username": usr,
+            "password": "yewyew",
+            "token": token,
+            "tt": tt(),
+            "gid": gid,
+            "callback": callback()
+        }
+        # r = requests.post("http://httpbin.org/post", data=payload)
+        r = requests.post("https://passport.baidu.com/v2/api/?login", data=payload
+                          , cookies=cookies)
+        print r.text
 
     def onNotebookPageChanged(self, evt):
         panel = self.notebook.GetCurrentPage()
