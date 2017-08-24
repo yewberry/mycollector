@@ -20,6 +20,8 @@ CFG_JSON = {
     "version": "1.0.0",
     "logLevel": 10,
     "monitorFolders": ["."],
+    "usr": "",
+    "pwd": "",
 }
 
 class MyConf(object):

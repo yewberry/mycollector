@@ -5,6 +5,7 @@ import multiprocessing
 
 import my_res as res
 import my_event as evt
+import my_glob as G
 from my_glob import LOG
 from my_conf import MyConf
 from my_session import MySession
@@ -160,6 +161,7 @@ class MyMainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         self.Bind(wx.EVT_MENU, self.onCloseWindow, id=ID_EXIT)
         self.Bind(wx.EVT_MENU, self.onOpenFile, id=ID_OPEN)
+        self.Bind(wx.EVT_MENU, self.onSettings, id=ID_SETTINGS)
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.onNotebookPageChanged, self.notebook)
 
     def onCloseWindow(self, evt):
@@ -168,112 +170,34 @@ class MyMainFrame(wx.Frame):
         self.Destroy()
 
     def onOpenFile(self, evt):
-        import PyV8
-        import requests
-        import re
-        import json
+        usr = self.cfg.get("usr")
+        pwd = self.cfg.get("pwd")
+        print usr, pwd
+        from my_baidu import MyBaiduPan
+        t = G.time_start()
+        bdpan = MyBaiduPan(usr, pwd, ssl_verify=False)
+        fs = bdpan.listFiles()
+        print len(fs)
+        LOG.debug(G.time_end(t))
 
-        # login_tangram_xxxxxxx.js
-        ctxt = PyV8.JSContext()
-        ctxt.enter()
-        gid = ctxt.eval("""
-            (function(){
-                return "xxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,
-                    function(e) {
-                        var t = 16 * Math.random() | 0,
-                        n = "x" == e ? t: 3 & t | 8;
-                        return n.toString(16)
-                    }).toUpperCase()
-            })
-        """)
-        tt = ctxt.eval("""
-            (function(){
-                return ""+(new Date).getTime();
-            })
-        """)
-        callback = ctxt.eval("""
-            (function(){
-                return "bd__cbs__" + Math.floor(Math.random() * 2147483648).toString(36);
-            })
-        """)
+        # t = G.time_start()
+        # print bdpan.getUrlById("263355782582825")
+        # LOG.debug(G.time_end(t))
 
-        gid = gid()
-        usr = "13813000397"
-        cookies = {}
-
-        r = requests.get("http://pan.baidu.com")
-        baidu_id = r.cookies["BAIDUID"]
-        print "BAIDUID:", baidu_id
-        cookies["BAIDUID"] = baidu_id
-
-        r = requests.get("https://passport.baidu.com/v2/api/?getapi", params={
-            "tpl": "netdisk",
-            "subpro": "netdisk_web",
-            "apiver": "v3",
-            "tt": tt(),
-            "class": "login",
-            "logintype": "basicLogin",
-            "gid": gid,
-            "callback": callback()
-        }, cookies=cookies)
-        json_str = re.findall(r"\((.+?)\)", r.text)[0]
-        json_str = json_str.replace("\'", "\"")
-        o = json.loads(json_str)
-        token = o["data"]["token"]
-        print "token:", token, o
-        cookies["HOSUPPORT"] = "1"
-
-        r = requests.get("https://passport.baidu.com/v2/api/?logincheck", params={
-            "token": token,
-            "tpl": "netdisk",
-            "subpro": "netdisk_web",
-            "apiver": "v3",
-            "tt": tt(),
-            "sub_source": "leadsetpwd",
-            "username": usr,
-            "isphone": "false",
-            "dv": "",
-            "callback": callback()
-        }, cookies=cookies)
-        ubi = r.cookies["UBI"]
-        print "UBI:", ubi
-        cookies["UBI"] = ubi
-
-        payload = {
-            "staticpage": "http://pan.baidu.com/res/static/thirdparty/pass_v3_jump.html",
-            "charset": "utf-8",
-            "tpl": "netdisk",
-            "subpro": "netdisk_web",
-            "apiver": "v3",
-            "codestring": "",
-            "safeflg": "0",
-            "u": "http://pan.baidu.com/disk/home",
-            "isPhone": "false",
-            "detect": "1",
-            "quick_user": "0",
-            "logintype": "basicLogin",
-            "logLoginType": "pc_loginBasic",
-            "idc": "",
-            "loginmerge": "true",
-            "foreignusername": "",
-            "mem_pass": "on",
-            "ppui_logintime": "7238",
-            "countrycode": "",
-            "fp_uid": "",
-            "fp_info": "",
-            "dv": "",
-
-            "username": usr,
-            "password": "yewyew",
-            "token": token,
-            "tt": tt(),
-            "gid": gid,
-            "callback": callback()
-        }
-        # r = requests.post("http://httpbin.org/post", data=payload)
-        r = requests.post("https://passport.baidu.com/v2/api/?login", data=payload
-                          , cookies=cookies)
-        print r.text
+    def onSettings(self, evt):
+        from selenium import webdriver
+        from selenium.webdriver.common.action_chains import ActionChains
+        driver = webdriver.PhantomJS(executable_path="./phantomjs.exe")
+        driver.get("http://pan.baidu.com")
+        el = driver.find_element_by_id("pageSignupCtrl")
+        act = ActionChains(driver)
+        act.move_to_element(el).perform()
+        el = driver.find_element_by_id("dv_Input")
+        dv = el.get_attribute("value")
+        baiduid = driver.get_cookie("BAIDUID")["value"]
+        token = driver.execute_script("return window.$BAIDU$._maps_id['TANGRAM__PSP_4'].bdPsWtoken")
+        driver.quit()
+        LOG.debug("dv:{}\nBAIDUID:{}\ntoken:{}".format(dv, baiduid, token))
 
     def onNotebookPageChanged(self, evt):
         panel = self.notebook.GetCurrentPage()
