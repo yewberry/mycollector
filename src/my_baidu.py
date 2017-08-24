@@ -193,20 +193,6 @@ class MyBaiduPan(object):
         sign = _sign2(sign3, sign1)
         return sign, timestamp
 
-    def _token(self):
-        r = self.session.get("https://passport.baidu.com/v2/api/?getapi", params={
-            "tpl": "netdisk",
-            "subpro": "netdisk_web",
-            "apiver": "v3",
-            "tt": MyBaiduPan._timestamp(),
-            "class": "login",
-            "gid": self.gid,
-            "logintype": "basicLogin",
-            "callback": "0"
-        })
-        o = json.loads(r.text.replace("\'", "\""))
-        return o["data"]["token"]
-
     def _gid(self):
         # in login_tangram_xxxxxxx.js
         jsctx = PyV8.JSContext()
@@ -254,19 +240,6 @@ class MyBaiduPan(object):
         LOG.debug("dv:{}\nBAIDUID:{}\ntoken:{}".format(dv, baiduid, token))
         return baiduid, dv, token
 
-    def _callback(self):
-        # in login_tangram_xxxxxxx.js
-        jsctx = PyV8.JSContext()
-        jsctx.enter()
-        _cb = jsctx.eval("""
-            (function(){
-                return "bd__cbs__" + Math.floor(Math.random() * 2147483648).toString(36);
-            })
-        """)
-        cb = _cb()
-        jsctx.leave()
-        return cb
-
     def _save_cookies(self):
         cookies_file = "{0}.cookies".format(self.usr)
         with open(cookies_file, "wb") as f:
@@ -288,6 +261,37 @@ class MyBaiduPan(object):
     @staticmethod
     def _timestamp():
         return "%u" % (time.time()*1000)
+
+    ###########################################################################
+    # NOT USED
+    ###########################################################################
+    # def _token(self):
+    #     r = self.session.get("https://passport.baidu.com/v2/api/?getapi", params={
+    #         "tpl": "netdisk",
+    #         "subpro": "netdisk_web",
+    #         "apiver": "v3",
+    #         "tt": MyBaiduPan._timestamp(),
+    #         "class": "login",
+    #         "gid": self.gid,
+    #         "logintype": "basicLogin",
+    #         "callback": "0"
+    #     })
+    #     o = json.loads(r.text.replace("\'", "\""))
+    #     return o["data"]["token"]
+
+    # def _callback(self):
+    #     # in login_tangram_xxxxxxx.js
+    #     jsctx = PyV8.JSContext()
+    #     jsctx.enter()
+    #     _cb = jsctx.eval("""
+    #         (function(){
+    #             return "bd__cbs__" + Math.floor(Math.random() * 2147483648).toString(36);
+    #         })
+    #     """)
+    #     cb = _cb()
+    #     jsctx.leave()
+    #     return cb
+
 
 
 
