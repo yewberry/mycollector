@@ -1,6 +1,8 @@
 from peewee import *
 
-database = SqliteDatabase('etc/data.db', **{})
+# database = SqliteDatabase('etc/data.db', **{})
+database = MySQLDatabase(host="127.0.0.1", user="root", passwd="123456",
+                         database="collector", charset="utf-8")
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass

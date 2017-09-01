@@ -3,5 +3,8 @@ pip install requests
 pip install peewee
 pip install watchdog
 pip install blinker
-pip install selenium
+pip install PyMySQL
+
 PyV8
+pip install selenium
+PhantomJS

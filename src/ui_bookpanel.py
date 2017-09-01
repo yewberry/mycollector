@@ -11,11 +11,6 @@ from my_glob import LOG
 from my_models import File
 from my_models import Ebook
 
-EVT_FOLDER_UPDATED = signal(evt.FOLDER_UPDATED)
-EVT_FILE_CREATED = signal(evt.FILE_CREATED)
-EVT_FILE_DELETED = signal(evt.FILE_DELETED)
-EVT_FILE_MODIFIED = signal(evt.FILE_MODIFIED)
-
 class MyBookPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1)
@@ -109,18 +104,18 @@ class MyBookPanel(wx.Panel):
     def onReload(self, pth):
         pass
 
-    @EVT_FOLDER_UPDATED.connect
+    # @EVT_FOLDER_UPDATED.connect
     def onFolderUpdated(self, **kw):
         dat = File.getItems()
         self.model.data = dat
         self.model.Reset(len(dat))
         LOG.debug(kw["data"])
 
-    @EVT_FILE_CREATED.connect
+    # @EVT_FILE_CREATED.connect
     def onFileCreate(self, **kw):
         self.model.addRow(kw["data"])
 
-    @EVT_FILE_DELETED.connect
+    # @EVT_FILE_DELETED.connect
     def onFileDelete(self, **kw):
         self.model.deleteRow(kw["data"])
 

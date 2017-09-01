@@ -1,34 +1,32 @@
 from peewee import *
 import os
-import hashlib
 import uuid
 from datetime import datetime
 
-from my_glob import LOG
-
 DB_NAME = "data.db"
-database = SqliteDatabase(DB_NAME, **{})
+# database = SqliteDatabase(DB_NAME, **{})
+database = MySQLDatabase(host="127.0.0.1", user="root", passwd="123456",
+                         database="collector", charset="utf8")
 
 def create_all_tables():
-    if not os.path.exists(DB_NAME):
-        database.create_tables([File, Ebook])
-    else:
-        database.connect()
+    tables = [File]
+    if type(database) == SqliteDatabase:
+        if not os.path.exists(DB_NAME):
+            database.create_tables(tables)
+        # else:
+        #     database.connect()
+    elif type(database) == MySQLDatabase:
+        if len(database.get_tables()) == 0:
+            database.create_tables(tables)
+        # else:
+        #     database.connect()
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass
 
 class BaseModel(Model):
-    @staticmethod
-    def getFileMd5(fp):
-        with open(fp, "r") as f:
-            m = hashlib.md5()
-            while True:
-                data = f.read(10240)
-                if not data:
-                    break
-                m.update(data)
-        return m.hexdigest()
+    class Meta:
+        database = database
 
     @classmethod
     def getItems(cls):
@@ -37,68 +35,56 @@ class BaseModel(Model):
             fs.append(f)
         return fs
 
-    class Meta:
-        database = database
+    @classmethod
+    def get_by_md5(cls, md5):
+        try:
+            f = File.select().where(File.md5 == md5).get()
+        except File.DoesNotExist:
+            f = None
+        return f
+
+    @classmethod
+    def get_by_path(cls, pth):
+        try:
+            f = File.select().where(File.path == pth).get()
+        except File.DoesNotExist:
+            f = None
+        return f
 
 class File(BaseModel):
-    invalid = BooleanField(default=False)
-    dirty = BooleanField(default=False)
-    ext = TextField(null=True)
-    file_create_time = DateTimeField(null=True)
-    last_check_time = DateTimeField(null=True)
-    last_modify_time = DateTimeField(null=True)
-    md5 = TextField(null=True, unique=True, index=True)
-    name = TextField()
-    path = TextField(null=True, index=True)
-    size = IntegerField(null=True)
-    uid = CharField(primary_key=True)
-
     class Meta:
         db_table = 't_file'
 
+    uid = FixedCharField(max_length=36, primary_key=True)
+    name = CharField(max_length=512)
+    path = CharField(max_length=2048, null=True)
+    size = IntegerField(null=True)
+    ext = CharField(max_length=12, null=True)
+    md5 = FixedCharField(max_length=32, null=True, unique=True, index=True)
+    file_create_time = DateTimeField(null=True)
+    file_modify_time = DateTimeField(null=True)
+    create_time = DateTimeField(default=datetime.now)
+    modify_time = DateTimeField(default=datetime.now)
+    last_check_time = DateTimeField(null=True)
+    dirty = BooleanField(default=True)
+    delete_flag = BooleanField(default=False)
+
     @staticmethod
     def add(pth, md5str):
-        dirty = True
-        fsize = os.path.getsize(pth)
         fname = os.path.basename(pth)
         fpath = os.path.abspath(pth)
-        ltime = datetime.fromtimestamp(os.path.getmtime(pth))
-        ctime = datetime.fromtimestamp(os.path.getctime(pth))
+        fsize = os.path.getsize(pth)
         fn, fext = os.path.splitext(fname)
-        f = File.create(uid=uuid.uuid4(), size=fsize, path=fpath, name=fname,
-                        md5=md5str, last_modify_time=ltime, file_create_time=ctime,
-                        last_check_time=datetime.now(), ext=fext, dirty=dirty)
-        if f.ext in Ebook.exts:
-            Ebook.create(uid=uuid.uuid4(), file=f, book_name=fn)
+        ctime = datetime.fromtimestamp(os.path.getctime(pth))
+        mtime = datetime.fromtimestamp(os.path.getmtime(pth))
+        f = File.create(uid=uuid.uuid4(), name=fname, path=fpath, size=fsize, ext=fext,
+                        md5=md5str, file_create_time=ctime, file_modify_time=mtime)
+        # if f.ext in Ebook.exts:
+        #     Ebook.create(uid=uuid.uuid4(), file=f, book_name=fn)
         return f
 
-    @staticmethod
-    def check(fp):
-        if fp is None:
-            return
-        pth = os.path.abspath(fp)
-        md5str = File.getFileMd5(pth)
-        dirty = True
-        try:
-            f = File.select().where((File.md5 == md5str) | (File.path == pth)).get()
-            if f.invalid:
-                f.invalid = False
-                f.save()
-
-            if f.md5 != md5str:
-                LOG.debug(u"{}: md5 diff, db:{}, cur:{}".format(f.name, f.md5, md5str))
-            elif f.path != pth:
-                LOG.debug(u"{}: path diff, db:{}, cur:{}".format(f.name, f.path, pth))
-                f.path = fp
-                f.save()
-            else:
-                dirty = False
-        except File.DoesNotExist:
-            f = File.add(pth, md5str)
-        return f, dirty
-
     def remove(self):
-        self.invalid = True
+        self.delete_flag = True
         self.save()
 
 class Ebook(BaseModel):

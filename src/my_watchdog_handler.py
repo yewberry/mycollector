@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from watchdog.events import RegexMatchingEventHandler
-import my_event as evt
+import my_file_tools as filetools
+from my_models import File
 
 class MyWatchdogHandler(RegexMatchingEventHandler):
     def __init__(self, parent, regex_list=[r".*"]):
@@ -11,20 +12,39 @@ class MyWatchdogHandler(RegexMatchingEventHandler):
         if event.is_directory:
             pass
         else:
-            self.parent.onFileChanged(evt.FILE_CREATED, event.src_path)
+            pth = event.src_path
+            md5 = filetools.get_md5(pth)
+            self.parent.onFileChanged({
+                "path": pth,
+                "md5": md5
+            })
 
     def on_deleted(self, event):
         if event.is_directory:
             pass
         else:
-            self.parent.onFileChanged(evt.FILE_DELETED, event.src_path)
+            pth = event.src_path
+            self.parent.onFileChanged({
+                "path": pth,
+                "md5": ""
+            })
 
     def on_modified(self, event):
         if event.is_directory:
             pass
         else:
-            self.parent.onFileChanged(evt.FILE_MODIFIED, event.src_path)
+            pth = event.src_path
+            md5 = filetools.get_md5(pth)
+            f = File.get_by_path(pth)
+            if (f is not None) and (f.md5 != md5):
+                self.parent.onFileChanged({
+                    "path": pth,
+                    "md5": md5
+                })
 
     def on_moved(self, event):
-        print("move", event.src_path, event.dest_path)
+        if event.is_directory:
+            pass
+        else:
+            print("move", event.src_path, event.dest_path)
 

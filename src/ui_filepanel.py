@@ -4,20 +4,23 @@ import wx
 import wx.dataview as dv
 import wx.propgrid as wxpg
 from blinker import signal
+import multiprocessing
 
 import my_res as res
-import my_event as evt
-import my_models as model
+import my_event as EVT
+from my_models import File
 from my_glob import LOG
+import my_worker as Worker
 
-EVT_FOLDER_UPDATED = signal(evt.FOLDER_UPDATED)
-EVT_FILE_CREATED = signal(evt.FILE_CREATED)
-EVT_FILE_DELETED = signal(evt.FILE_DELETED)
-EVT_FILE_MODIFIED = signal(evt.FILE_MODIFIED)
+SYNC_LOCAL_NEW = signal(EVT.SYNC_LOCAL_NEW)
+SYNC_LOCAL_DELETED = signal(EVT.SYNC_LOCAL_DELETED)
+SYNC_LOCAL_MODIFIED = signal(EVT.SYNC_LOCAL_MODIFIED)
+WATCHDOG_FILE_CHANGED = signal(EVT.WATCHDOG_FILE_CHANGED)
 
 class MyFilePanel(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, worker_queue):
         wx.Panel.__init__(self, parent, -1)
+        self.worker_queue = worker_queue
         # pgm: property grid manger
         self._pgm = None
         self._dvc = dv.DataViewCtrl(self, style=wx.BORDER_THEME | dv.DV_ROW_LINES | dv.DV_VERT_RULES | dv.DV_MULTIPLE)
@@ -62,7 +65,7 @@ class MyFilePanel(wx.Panel):
         page.Append(wxpg.StringProperty(res.S_BD_EXT, "file_ext"))
         page.Append(wxpg.StringProperty(res.S_BD_SIZE, "file_size"))
         page.Append(wxpg.StringProperty(res.S_BD_MD5, "md5"))
-        page.Append(wxpg.StringProperty(res.S_BD_MODIFY_TIME, "last_modify_time"))
+        page.Append(wxpg.StringProperty(res.S_BD_MODIFY_TIME, "file_modify_time"))
         page.Append(wxpg.LongStringProperty(res.S_BD_PATH, "path"))
         self._pgm = pgm
 
@@ -79,7 +82,7 @@ class MyFilePanel(wx.Panel):
         fn("file_ext", f.ext if f.ext is not None else "")
         fn("file_size", str(round(float(f.size) / 1024 / 1024, 2)))
         fn("md5", f.md5)
-        fn("last_modify_time", f.last_modify_time.strftime("%Y-%m-%d %H:%M:%S"))
+        fn("file_modify_time", f.file_modify_time.strftime("%Y-%m-%d %H:%M:%S"))
         fn("path", f.path)
 
     def OnDeleteRows(self, evt):
@@ -96,20 +99,30 @@ class MyFilePanel(wx.Panel):
     def onReload(self, pth):
         pass
 
-    @EVT_FOLDER_UPDATED.connect
-    def onFolderUpdated(self, **kw):
-        dat = model.File.getItems()
-        self.model.data = dat
-        self.model.Reset(len(dat))
-        LOG.debug(kw["data"])
+    SYNC_LOCAL_NEW = signal(EVT.SYNC_LOCAL_NEW)
+    SYNC_LOCAL_DELETED = signal(EVT.SYNC_LOCAL_DELETED)
+    SYNC_LOCAL_MODIFIED = signal(EVT.SYNC_LOCAL_MODIFIED)
 
-    @EVT_FILE_CREATED.connect
+    # @EVT_FOLDER_UPDATED.connect
+    # def onFolderUpdated(self, **kw):
+    #     dat = model.File.getItems()
+    #     self.model.data = dat
+    #     self.model.Reset(len(dat))
+    #     LOG.debug(kw["data"])
+
+    @SYNC_LOCAL_NEW.connect
     def onFileCreate(self, **kw):
         self.model.addRow(kw["data"])
 
-    @EVT_FILE_DELETED.connect
+    @SYNC_LOCAL_DELETED.connect
     def onFileDelete(self, **kw):
         self.model.deleteRow(kw["data"])
+
+    @WATCHDOG_FILE_CHANGED.connect
+    def on_watchdog_file_changed(self, **kw):
+        pth = kw["data"]["path"]
+        p = multiprocessing.Process(target=Worker.sync_local_file, args=(pth, self.worker_queue))
+        p.start()
 
 ###########################################################################
 # DVC model
@@ -117,7 +130,7 @@ class MyFilePanel(wx.Panel):
 class MyFileModel(dv.PyDataViewIndexListModel):
     def __init__(self):
         dv.PyDataViewIndexListModel.__init__(self)
-        self.data = model.File.getItems()
+        self.data = File.getItems()
         self.Reset(len(self.data))
 
     def GetColumnType(self, col):
@@ -130,7 +143,7 @@ class MyFileModel(dv.PyDataViewIndexListModel):
         elif col == 1:
             c = f.ext
         elif col == 2:
-            c = f.last_modify_time.strftime("%Y-%m-%d %H:%M:%S")
+            c = f.file_modify_time.strftime("%Y-%m-%d %H:%M:%S")
         elif col == 3:
             c = round(float(f.size) / 1024 / 1024, 2)
         else:
@@ -148,7 +161,7 @@ class MyFileModel(dv.PyDataViewIndexListModel):
 
     def GetAttrByRow(self, row, col, attr):
         f = self.data[row]
-        if f.invalid:
+        if f.delete_flag:
             attr.SetColour("gray")
             attr.SetItalic(True)
             return True
@@ -170,10 +183,13 @@ class MyFileModel(dv.PyDataViewIndexListModel):
             c2 = getattr(self.data[row2], fld)
         return cmp(c1, c2)
 
-    def addRow(self, fp):
-        pth = os.path.abspath(fp)
-        idx = next((i for i, x in enumerate(self.data) if x.path == pth), [-1])
-        f, _ = model.File.check(fp)
+    def addRow(self, dat):
+        pth = dat["path"]
+        md5 = dat["md5"]
+        idx = next((i for i, x in enumerate(self.data) if x.md5 == md5), -1)
+        f = File.get_by_md5(md5)
+        if f is None:
+            f = File.add(pth, md5)
         if idx == -1:
             self.data.append(f)
             self.RowAppended()

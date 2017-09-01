@@ -3,6 +3,7 @@ import threading
 import time
 from blinker import signal
 from my_glob import LOG
+import my_event as EVT
 
 class MySignalCenter(threading.Thread):
     def __init__(self, interval=1):
@@ -19,11 +20,12 @@ class MySignalCenter(threading.Thread):
                     r = q.get()
                     LOG.debug(r)
                     signal_str = r["signal"]
+                    signal_dat = r["data"]
                     sender = self
                     if signal_str in self.sender_map.keys():
                         sender = self.sender_map[signal_str]
-                    sig = signal(r["signal"])
-                    sig.send(sender, data=r["data"])
+                    sig = signal(signal_str)
+                    sig.send(sender, data=signal_dat)
             time.sleep(self.interval)
 
     def stop(self):

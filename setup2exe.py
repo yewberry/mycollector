@@ -21,7 +21,7 @@ dll_excludes = ['libgdk-win32-2.0-0.dll', 'libgobject-2.0-0.dll', 'tcl84.dll',
                 'MSVCP90.dll', 'mswsock.dll', 'powrprof.dll']
 msCrtDll = glob.glob(r".\etc\Microsoft.VC90.CRT\*.*")
 # install the MSVC 9 runtime dll
-data_files += [("Microsoft.VC90.CRT", msCrtDll), ]
+data_files += [("Microsoft.VC90.CRT", msCrtDll)]
 
 # --------------------------- APP CONFIG --------------------------------------
 _name = "Collector"

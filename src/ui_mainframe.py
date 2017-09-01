@@ -4,7 +4,7 @@ import wx.aui
 import multiprocessing
 
 import my_res as res
-import my_event as evt
+import my_event as EVT
 import my_glob as G
 from my_glob import LOG
 from my_conf import MyConf
@@ -44,7 +44,7 @@ class MyMainFrame(wx.Frame):
 
         self._mgr = wx.aui.AuiManager(self)
         self.worker_queue = multiprocessing.Queue(10)
-        self.wathcdog = MyWatchdog(self.monitorFolders[0])
+        self.watchdog = MyWatchdog(self.monitorFolders[0])
         self.signalcenter = MySignalCenter()
 
         # Set system menu icon
@@ -52,7 +52,7 @@ class MyMainFrame(wx.Frame):
         self.loadSession()
         self.createClientArea()
 
-        self.signalcenter.subscribe(self.wathcdog.queue)
+        self.signalcenter.subscribe(self.watchdog.queue)
         self.signalcenter.subscribe(self.worker_queue)
         self.startWorker()
 
@@ -91,17 +91,17 @@ class MyMainFrame(wx.Frame):
         self.booktree = MyBookTree(self)
         self.notebook = wx.aui.AuiNotebook(self, style=wx.aui.AUI_NB_TOP |
                             wx.aui.AUI_NB_TAB_SPLIT | wx.aui.AUI_NB_TAB_MOVE | wx.aui.AUI_NB_SCROLL_BUTTONS)
-        self.filepanel = MyFilePanel(self.notebook)
-        self.bookpanel = MyBookPanel(self.notebook)
-        self.netdiskpanel = MyNetDiskPanel(self.notebook)
-        self.notebook.AddPage(self.netdiskpanel, res.S_MF_NETDISK_TITLE)
+        self.filepanel = MyFilePanel(self.notebook, self.worker_queue)
+        # self.bookpanel = MyBookPanel(self.notebook)
+        # self.netdiskpanel = MyNetDiskPanel(self.notebook)
+        # self.notebook.AddPage(self.netdiskpanel, res.S_MF_NETDISK_TITLE)
         self.notebook.AddPage(self.filepanel, res.S_MF_ALL_TITLE)
-        self.notebook.AddPage(self.bookpanel, res.S_MF_BOOK_TITLE)
+        # self.notebook.AddPage(self.bookpanel, res.S_MF_BOOK_TITLE)
         self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_MUSIC_TITLE)
         self.notebook.AddPage(wx.Panel(self.notebook), res.S_MF_VIDEO_TITLE)
         self.detailpanel = MyDetailPanel(self)
 
-        def_page = self.netdiskpanel
+        def_page = self.filepanel
         self.notebook.SetSelection(self.notebook.GetPageIndex(def_page))
         def_page.initDetailPanel(self.detailpanel.pgm)
 
@@ -113,8 +113,9 @@ class MyMainFrame(wx.Frame):
         self._mgr.AddPane(self.notebook, wx.CENTER)
         self._mgr.AddPane(self.detailpanel, wx.RIGHT, res.S_BD_TITLE)
         self._mgr.Update()
-        self.signalcenter.addSenderMap(self.bookpanel,
-                                       evt.FOLDER_UPDATED, evt.FILE_CREATED, evt.FILE_DELETED, evt.FILE_MODIFIED)
+        self.signalcenter.addSenderMap(self.filepanel,
+                                       EVT.SYNC_LOCAL_NEW, EVT.SYNC_LOCAL_MODIFIED, EVT.SYNC_LOCAL_DELETED,
+                                       EVT.SYNC_LOCAL_MOVED, EVT.SYNC_LOCAL_REVERT, EVT.WATCHDOG_FILE_CHANGED)
 
     def createStatusbar(self):
         self.statusbar = self.CreateStatusBar()
@@ -148,9 +149,12 @@ class MyMainFrame(wx.Frame):
     # Subprocess init
     ###########################################################################
     def startWorker(self):
+        # start signal center thread
         self.signalcenter.start()
-        self.wathcdog.start()
-        p = multiprocessing.Process(target=MyWorker.sync_files_info,
+        # start watchdog process
+        self.watchdog.start()
+        # start worker process
+        p = multiprocessing.Process(target=MyWorker.sync_local_dir,
                                     args=(self.monitorFolders[0], self.worker_queue))
         p.start()
 
@@ -165,39 +169,30 @@ class MyMainFrame(wx.Frame):
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.onNotebookPageChanged, self.notebook)
 
     def onCloseWindow(self, evt):
-        self.wathcdog.stop()
+        self.watchdog.stop()
         self.saveSession()
         self.Destroy()
 
     def onOpenFile(self, evt):
         usr = self.cfg.get("usr")
         pwd = self.cfg.get("pwd")
-        print usr, pwd
+
         from my_baidu import MyBaiduPan
         t = G.time_start()
         bdpan = MyBaiduPan(usr, pwd, ssl_verify=False)
-        fs = bdpan.listFiles()
-        print len(fs)
         LOG.debug(G.time_end(t))
 
+        # t = G.time_start()
+        # fs = bdpan.list_files()
+        # print fs
+        # LOG.debug(G.time_end(t))
+        #
         # t = G.time_start()
         # print bdpan.getUrlById("263355782582825")
         # LOG.debug(G.time_end(t))
 
     def onSettings(self, evt):
-        from selenium import webdriver
-        from selenium.webdriver.common.action_chains import ActionChains
-        driver = webdriver.PhantomJS(executable_path="./phantomjs.exe")
-        driver.get("http://pan.baidu.com")
-        el = driver.find_element_by_id("pageSignupCtrl")
-        act = ActionChains(driver)
-        act.move_to_element(el).perform()
-        el = driver.find_element_by_id("dv_Input")
-        dv = el.get_attribute("value")
-        baiduid = driver.get_cookie("BAIDUID")["value"]
-        token = driver.execute_script("return window.$BAIDU$._maps_id['TANGRAM__PSP_4'].bdPsWtoken")
-        driver.quit()
-        LOG.debug("dv:{}\nBAIDUID:{}\ntoken:{}".format(dv, baiduid, token))
+        pass
 
     def onNotebookPageChanged(self, evt):
         panel = self.notebook.GetCurrentPage()
